@@ -1,11 +1,14 @@
 import { redirect } from 'next/navigation';
-import { getLocale } from 'next-intl/server';
 import { createClient } from '@/lib/supabase/server';
 import { AlertsPageClient } from '@/components/nde/alerts-page-client';
 
-export default async function AlertsPage() {
+export default async function AlertsPage({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
   const supabase = await createClient();
-  const locale   = await getLocale();
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect(`/${locale}/login`);
