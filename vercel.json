@@ -1,7 +1,7 @@
 {
   "crons": [
-    { "path": "/api/cron/nde",                   "schedule": "0 8  * * *" },
-    { "path": "/api/cron/deadline-reminders",    "schedule": "0 9  * * *" },
+    { "path": "/api/cron/nde",                   "schedule": "0 8 * * *" },
+    { "path": "/api/cron/deadline-reminders",    "schedule": "0 9 * * *" },
     { "path": "/api/cron/refresh-scores",        "schedule": "0 10 * * *" },
     { "path": "/api/cron/onboarding-followup",   "schedule": "0 11 * * *" }
   ]
