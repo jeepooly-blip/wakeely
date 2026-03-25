@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { getLocale, getTranslations } from 'next-intl/server';
+import { getTranslations } from 'next-intl/server';    // removed getLocale
 import { createClient } from '@/lib/supabase/server';
 import { Link } from '@/i18n/navigation';
 import { cn } from '@/lib/utils';
@@ -30,8 +30,6 @@ function CaseTypeIcon({ type }: { type: string }) {
   );
 }
 
-// HealthBadge imported from @/components/scores/health-badge
-
 function SeverityBadge({ severity }: { severity: string }) {
   const map: Record<string, string> = {
     critical: 'bg-red-100    text-red-700    dark:bg-red-900/40    dark:text-red-400',
@@ -46,10 +44,14 @@ function SeverityBadge({ severity }: { severity: string }) {
   );
 }
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;          // ✅ locale from URL
   const supabase = await createClient();
-  const locale   = await getLocale();
-  const t        = await getTranslations('dashboard');
+  const t        = await getTranslations({ locale, namespace: 'dashboard' });
   const isRTL    = locale === 'ar';
   const Chevron  = isRTL ? ChevronLeft : ChevronRight;
 
