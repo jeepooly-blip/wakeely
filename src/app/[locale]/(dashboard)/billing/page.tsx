@@ -1,17 +1,18 @@
 import { redirect } from 'next/navigation';
-import { getLocale } from 'next-intl/server';
 import { createClient } from '@/lib/supabase/server';
 import { PricingCards } from '@/components/billing/pricing-cards';
 import { CreditCard, CheckCircle2, XCircle } from 'lucide-react';
 import type { SubscriptionTier } from '@/types';
 
 export default async function BillingPage({
+  params,
   searchParams,
 }: {
+  params: Promise<{ locale: string }>;
   searchParams: Promise<{ success?: string; canceled?: string; tier?: string }>;
 }) {
+  const { locale } = await params;          // ✅ locale from URL
   const supabase = await createClient();
-  const locale   = await getLocale();
   const isRTL    = locale === 'ar';
   const sp       = await searchParams;
 
