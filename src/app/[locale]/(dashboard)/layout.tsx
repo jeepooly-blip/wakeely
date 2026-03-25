@@ -6,8 +6,18 @@ import { NotificationsHub }      from '@/components/notifications/notifications-
 import { OnboardingController } from '@/components/onboarding/onboarding-controller';
 import {
   Shield, LayoutDashboard, FolderOpen, Lock,
-  Calendar, Bell, Settings, CreditCard, Mic,
+  Calendar, Bell, Settings, CreditCard, Mic, LogOut,
 } from 'lucide-react';
+
+// ── Server action to sign out ────────────────────────────────
+async function signOut() {
+  'use server';
+  const supabase = await createClient();
+  await supabase.auth.signOut();
+  // Redirect to the landing page (will go to /ar or /en based on current locale)
+  // We'll redirect to the root; next.config.mjs will redirect to /ar.
+  redirect('/');
+}
 
 export default async function DashboardLayout({
   children,
@@ -16,7 +26,7 @@ export default async function DashboardLayout({
   children: React.ReactNode;
   params: Promise<{ locale: string }>;
 }) {
-  const { locale } = await params;          // ✅ locale from URL
+  const { locale } = await params;
   const supabase = await createClient();
   const isRTL    = locale === 'ar';
 
@@ -87,24 +97,31 @@ export default async function DashboardLayout({
           ))}
         </nav>
 
-        {/* Footer */}
+        {/* Footer with user info and sign out */}
         <div className="border-t border-border p-3 space-y-3">
           <div className="flex items-center gap-2">
             <ThemeToggle />
             <LanguageSwitcher variant="dropdown" />
             <NotificationsHub locale={locale} />
           </div>
-          <div className="flex items-center gap-2.5 rounded-xl bg-muted/50 px-3 py-2.5">
-            <div className="h-7 w-7 rounded-full bg-gradient-to-br from-[#1A3557] to-[#0E7490] flex items-center justify-center shrink-0 shadow-sm">
-              <span className="text-[10px] font-black text-white">{initials}</span>
-            </div>
-            <div className="min-w-0">
-              <p className="text-xs font-semibold text-foreground truncate">
-                {profile?.full_name || user.email?.split('@')[0]}
-              </p>
-              <p className="text-[10px] text-muted-foreground truncate" dir="ltr">{user.email}</p>
-            </div>
-          </div>
+
+          {/* User profile + Sign out button */}
+          <form action={signOut}>
+            <button type="submit" className="w-full">
+              <div className="flex items-center gap-2.5 rounded-xl bg-muted/50 px-3 py-2.5 hover:bg-muted/80 transition-colors cursor-pointer">
+                <div className="h-7 w-7 rounded-full bg-gradient-to-br from-[#1A3557] to-[#0E7490] flex items-center justify-center shrink-0 shadow-sm">
+                  <span className="text-[10px] font-black text-white">{initials}</span>
+                </div>
+                <div className="min-w-0 flex-1 text-left">
+                  <p className="text-xs font-semibold text-foreground truncate">
+                    {profile?.full_name || user.email?.split('@')[0]}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground truncate" dir="ltr">{user.email}</p>
+                </div>
+                <LogOut className="h-4 w-4 text-muted-foreground shrink-0" />
+              </div>
+            </button>
+          </form>
         </div>
       </aside>
 
@@ -134,9 +151,9 @@ export default async function DashboardLayout({
           </div>
         </main>
 
-        {/* Mobile bottom navigation */}
+        {/* Mobile bottom navigation with sign out */}
         <nav className="lg:hidden sticky bottom-0 z-40 flex items-center justify-around border-t border-border bg-card/95 backdrop-blur-sm py-2 px-1 shadow-[0_-1px_3px_rgba(0,0,0,0.06)]">
-          {navItems.slice(0, 5).map(({ href, icon: Icon, label, badge }) => (
+          {navItems.slice(0, 4).map(({ href, icon: Icon, label, badge }) => (
             <a key={href} href={href}
               className="relative flex flex-col items-center gap-0.5 rounded-xl p-2 text-muted-foreground hover:text-[#1A3557] dark:hover:text-blue-300 transition-colors">
               <Icon className="h-5 w-5" />
@@ -148,6 +165,16 @@ export default async function DashboardLayout({
               )}
             </a>
           ))}
+          {/* Sign out button for mobile */}
+          <form action={signOut}>
+            <button type="submit"
+              className="relative flex flex-col items-center gap-0.5 rounded-xl p-2 text-muted-foreground hover:text-[#1A3557] dark:hover:text-blue-300 transition-colors">
+              <LogOut className="h-5 w-5" />
+              <span className="text-[9px] font-medium">
+                {isRTL ? 'خروج' : 'Sign out'}
+              </span>
+            </button>
+          </form>
         </nav>
       </div>
 
