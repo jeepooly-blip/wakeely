@@ -1,4 +1,3 @@
-import { getLocale }    from 'next-intl/server';
 import { redirect }     from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { VoiceAdvisor } from '@/components/voice/voice-advisor';
@@ -9,8 +8,12 @@ import {
 } from 'lucide-react';
 import type { SubscriptionTier } from '@/types';
 
-export default async function VoicePage() {
-  const locale   = await getLocale();
+export default async function VoicePage({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;          // ✅ locale from URL
   const isRTL    = locale === 'ar';
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
