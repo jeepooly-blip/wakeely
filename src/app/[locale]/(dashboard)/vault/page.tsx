@@ -1,13 +1,16 @@
 import { redirect } from 'next/navigation';
-import { getLocale } from 'next-intl/server';
 import { createClient } from '@/lib/supabase/server';
 import { Link } from '@/i18n/navigation';
 import { Lock, FileText, FolderOpen, Calendar, Hash, Scale } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-export default async function VaultPage() {
+export default async function VaultPage({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;          // ✅ locale from URL
   const supabase = await createClient();
-  const locale   = await getLocale();
   const isRTL    = locale === 'ar';
 
   const { data: { user } } = await supabase.auth.getUser();
