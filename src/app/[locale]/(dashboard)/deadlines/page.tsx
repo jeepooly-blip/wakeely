@@ -1,12 +1,15 @@
 import { redirect } from 'next/navigation';
-import { getLocale } from 'next-intl/server';
 import { createClient } from '@/lib/supabase/server';
 import { DeadlineTracker } from '@/components/deadlines/deadline-tracker';
 import type { DeadlineRowFull } from '@/components/deadlines/deadline-list';
 
-export default async function DeadlinesPage() {
+export default async function DeadlinesPage({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
   const supabase = await createClient();
-  const locale   = await getLocale();
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect(`/${locale}/login`);
