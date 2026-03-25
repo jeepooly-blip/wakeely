@@ -1,5 +1,4 @@
 import { redirect } from 'next/navigation';
-import { getLocale } from 'next-intl/server';
 import { createClient } from '@/lib/supabase/server';
 import { LanguageSwitcher } from '@/components/language-switcher';
 import { ThemeToggle } from '@/components/theme-toggle';
@@ -10,9 +9,15 @@ import {
   Calendar, Bell, Settings, CreditCard, Mic,
 } from 'lucide-react';
 
-export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
+export default async function DashboardLayout({
+  children,
+  params,
+}: {
+  children: React.ReactNode;
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;          // ✅ locale from URL
   const supabase = await createClient();
-  const locale   = await getLocale();
   const isRTL    = locale === 'ar';
 
   const { data: { user } } = await supabase.auth.getUser();
