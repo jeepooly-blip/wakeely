@@ -1,5 +1,4 @@
 import { redirect } from 'next/navigation';
-import { getLocale } from 'next-intl/server';
 import { createClient } from '@/lib/supabase/server';
 import { Bell, CheckCheck, ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -10,9 +9,13 @@ const TYPE_ICONS: Record<string, string> = {
   subscription_updated: '⭐', system: 'ℹ️',
 };
 
-export default async function NotificationsPage() {
+export default async function NotificationsPage({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;          // ✅ locale from URL
   const supabase = await createClient();
-  const locale   = await getLocale();
   const isRTL    = locale === 'ar';
 
   const { data: { user } } = await supabase.auth.getUser();
