@@ -1,4 +1,3 @@
-import { getLocale } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
@@ -161,10 +160,14 @@ function Badge({ children }: { children: React.ReactNode }) {
 }
 
 /* ─── Main page ─────────────────────────────────────────────── */
-export default async function LandingPage() {
-  const locale = await getLocale();
-  const isRTL  = locale === 'ar';
-  const c      = isRTL ? CONTENT.ar : CONTENT.en;
+export default async function LandingPage({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;   // ✅ locale comes from the URL
+  const isRTL = locale === 'ar';
+  const c = isRTL ? CONTENT.ar : CONTENT.en;
   const ChevIcon = isRTL ? ChevronLeft : ChevronRight;
 
   // If user is already logged in, send to dashboard
