@@ -1,5 +1,4 @@
 import { redirect } from 'next/navigation';
-import { getLocale } from 'next-intl/server';
 import { createClient } from '@/lib/supabase/server';
 import { Link } from '@/i18n/navigation';
 import { cn } from '@/lib/utils';
@@ -18,9 +17,13 @@ const CASE_TYPE_CONFIG: Record<string, { icon: React.ElementType; color: string 
   other:      { icon: MoreHorizontal,color: 'text-gray-600   bg-gray-50   dark:bg-gray-900/40'   },
 };
 
-export default async function CasesPage() {
+export default async function CasesPage({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;          // ✅ locale from URL
   const supabase = await createClient();
-  const locale   = await getLocale();
   const isRTL    = locale === 'ar';
   const Chevron  = isRTL ? ChevronLeft : ChevronRight;
 
