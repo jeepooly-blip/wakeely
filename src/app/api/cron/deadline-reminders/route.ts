@@ -115,44 +115,33 @@ export async function GET(request: Request) {
       }
     }
 
-    // ── WhatsApp via Cloud API ───────────────────────────────
-    if (
-      notifWA && phone &&
-      process.env.WHATSAPP_ACCESS_TOKEN &&
-      process.env.WHATSAPP_PHONE_NUMBER_ID
-    ) {
+    // ── WhatsApp + SMS fallback (urgent = today/tomorrow) ────────
+    if (phone) {
+      const waBody = isAr
+        ? `📅 وكيلا: تذكير بموعد "${dl.title}" في قضية "${caseTitle}" — ${daysLabel}`
+        : `📅 Wakeela: Deadline reminder for "${dl.title}" in case "${caseTitle}" — due ${daysLabel}`;
+      const smsBody = isAr
+        ? `وكيلا: موعد "${dl.title.slice(0, 40)}" ${daysLabel}`
+        : `Wakeela: Deadline "${dl.title.slice(0, 40)}" due ${daysLabel}`;
+      const isUrgent = daysLeft <= 1;
       try {
-        const res = await fetch(
-          `https://graph.facebook.com/v19.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
-          {
-            method: 'POST',
-            headers: {
-              Authorization:  `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              messaging_product: 'whatsapp',
-              to:                phone.replace(/\D/g, ''),
-              type:              'template',
-              template: {
-                name:     'wakeela_deadline_reminder',
-                language: { code: isAr ? 'ar' : 'en_US' },
-                components: [{
-                  type:       'body',
-                  parameters: [
-                    { type: 'text', text: dl.title },
-                    { type: 'text', text: caseTitle },
-                    { type: 'text', text: daysLabel },
-                  ],
-                }],
-              },
-            }),
-          }
-        );
-        if (res.ok) result.wa = true;
-        else errors.push({ id: dl.id, error: `wa: ${await res.text()}` });
+        const { sendWhatsAppWithSMSFallback, sendWhatsApp } = await import('@/lib/notify');
+        if (isUrgent) {
+          // Today/tomorrow — use fallback chain (WA → SMS if WA fails or disabled)
+          await sendWhatsAppWithSMSFallback({
+            phone,
+            message:               waBody,
+            smsMessage:            smsBody,
+            notification_whatsapp: notifWA,
+          });
+          result.wa = true;
+        } else if (notifWA) {
+          // 3d / 7d reminders — WhatsApp only, no SMS
+          const waResult = await sendWhatsApp({ phone, message: waBody });
+          result.wa = waResult.ok;
+        }
       } catch (e) {
-        errors.push({ id: dl.id, error: `wa_ex: ${String(e)}` });
+        errors.push({ id: dl.id, error: `wa_sms_ex: ${String(e)}` });
       }
     }
 

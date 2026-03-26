@@ -71,8 +71,7 @@ export async function POST(req: Request, { params }: Params) {
   return NextResponse.json({
     ...link,
     witness_url: `${appUrl}/witness/${link.token}`,
-  }, { status: 201 });
-}
+  }, { status: 201 });}
 
 export async function GET(_req: Request, { params }: Params) {
   const { id: caseId } = await params;
