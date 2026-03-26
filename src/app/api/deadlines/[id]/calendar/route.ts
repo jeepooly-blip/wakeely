@@ -40,7 +40,7 @@ export async function GET(
     return NextResponse.json({ error: 'Deadline not found' }, { status: 404 });
   }
 
-  const caseRow = dl.cases as { id: string; title: string; jurisdiction: string | null };
+  const caseRow = dl.cases as unknown as { id: string; title: string; jurisdiction: string | null };
 
   const deadline: CalendarDeadline = {
     id:           dl.id,
