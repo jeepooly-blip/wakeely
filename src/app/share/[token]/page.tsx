@@ -96,8 +96,7 @@ export default async function SharePage({
   });
 
   // ── 5. Generate a short-lived signed URL for the file ─────────
-  const doc = share.documents as { file_path: string; file_name: string } | null;
-
+const doc = share.documents?.[0] as { file_path: string; file_name: string } | undefined;
   if (!doc?.file_path) {
     return <InvalidSharePage expired={false} />;
   }
