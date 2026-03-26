@@ -37,6 +37,7 @@ export async function middleware(request: NextRequest) {
   request.cookies.delete('NEXT_LOCALE');
 
   // ── STEP 2: Extract locale purely from the URL path
+  const pathname      = request.nextUrl.pathname;
   const pathSegments  = pathname.split('/');
   const urlLocale     = ['en', 'ar'].includes(pathSegments[1]) ? pathSegments[1] : 'ar';
 
@@ -106,8 +107,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // Exclude static assets, API routes, and public unauthenticated pages
-    // /witness/ and /share/ handle their own HTML — no locale needed
-    '/((?!_next|_vercel|api|witness|share|.*\\.(?:ico|png|svg|jpg|jpeg|gif|webp|woff2?|ttf|otf|css|js)).*)',
+    '/((?!_next|_vercel|api|.*\\.(?:ico|png|svg|jpg|jpeg|gif|webp|woff2?|ttf|otf|css|js)).*)',
   ],
 };
