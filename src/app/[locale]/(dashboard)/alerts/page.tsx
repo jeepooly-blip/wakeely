@@ -13,7 +13,7 @@ export default async function AlertsPage({
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect(`/${locale}/login`);
 
-  // ── Fetch active cases ─────────────────────────────────────
+  // ── Fetch active cases first (needed for caseIds) ────────────
   const { data: cases } = await supabase
     .from('cases')
     .select('id, title')
@@ -27,20 +27,20 @@ export default async function AlertsPage({
   const caseIds = cases.map((c) => c.id);
   const caseMap = Object.fromEntries(cases.map((c) => [c.id, c.title]));
 
-  // ── Fetch all NDE flags for those cases ───────────────────
-  const { data: flagsRaw } = await supabase
-    .from('nde_flags')
-    .select('id, rule_id, severity, triggered_at, resolved_at, action_taken, case_id')
-    .in('case_id', caseIds)
-    .order('triggered_at', { ascending: false });
-
-  // ── Fetch matching timeline events for payloads ───────────
-  const { data: events } = await supabase
-    .from('timeline_events')
-    .select('case_id, payload, created_at')
-    .in('case_id', caseIds)
-    .eq('event_type', 'nde_flag')
-    .order('created_at', { ascending: false });
+  // ── Parallel: flags + timeline events ────────────────────────
+  const [{ data: flagsRaw }, { data: events }] = await Promise.all([
+    supabase
+      .from('nde_flags')
+      .select('id, rule_id, severity, triggered_at, resolved_at, action_taken, case_id')
+      .in('case_id', caseIds)
+      .order('triggered_at', { ascending: false }),
+    supabase
+      .from('timeline_events')
+      .select('case_id, payload, created_at')
+      .in('case_id', caseIds)
+      .eq('event_type', 'nde_flag')
+      .order('created_at', { ascending: false }),
+  ]);
 
   // Build a map: case_id+rule_id → payload
   const payloadMap = new Map<string, Record<string, unknown>>();
@@ -55,7 +55,7 @@ export default async function AlertsPage({
 
   const flags = (flagsRaw ?? []).map((f) => ({
     id:           f.id,
-    rule_id:      f.rule_id as 1 | 2 | 3 | 4 | 5 | 6 | 7,
+    rule_id:      f.rule_id as 1 | 2 | 3,
     severity:     f.severity as 'low' | 'medium' | 'high' | 'critical',
     triggered_at: f.triggered_at,
     resolved_at:  f.resolved_at,

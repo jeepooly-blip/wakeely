@@ -19,18 +19,20 @@ export default async function BillingPage({
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect(`/${locale}/login`);
 
-  const { data: profile } = await supabase
-    .from('users')
-    .select('subscription_tier, full_name, email, stripe_customer_id')
-    .eq('id', user.id)
-    .maybeSingle();
-
-  const { data: sub } = await supabase
-    .from('subscriptions')
-    .select('tier, status, current_period_end')
-    .eq('user_id', user.id)
-    .eq('status', 'active')
-    .maybeSingle();
+  // ── Parallel queries ─────────────────────────────────────────
+  const [{ data: profile }, { data: sub }] = await Promise.all([
+    supabase
+      .from('users')
+      .select('subscription_tier, full_name, email, stripe_customer_id')
+      .eq('id', user.id)
+      .maybeSingle(),
+    supabase
+      .from('subscriptions')
+      .select('tier, status, current_period_end')
+      .eq('user_id', user.id)
+      .eq('status', 'active')
+      .maybeSingle(),
+  ]);
 
   const currentTier = (profile?.subscription_tier ?? 'basic') as SubscriptionTier;
   const hasStripe   = !!process.env.STRIPE_SECRET_KEY;

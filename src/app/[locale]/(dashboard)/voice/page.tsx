@@ -1,12 +1,14 @@
 import { redirect }     from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { VoiceAdvisor } from '@/components/voice/voice-advisor';
 import { Link }         from '@/i18n/navigation';
+import dynamic          from 'next/dynamic';
 import {
   Mic, Sparkles, ArrowLeft, ArrowRight,
   MessageSquare, Clock, Globe,
 } from 'lucide-react';
 import type { SubscriptionTier } from '@/types';
+
+const VoiceAdvisor = dynamic(() => import('@/components/voice/voice-advisor').then(m => ({ default: m.VoiceAdvisor })), { ssr: false });
 
 export default async function VoicePage({
   params,

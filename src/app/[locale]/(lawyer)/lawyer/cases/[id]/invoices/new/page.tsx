@@ -15,24 +15,23 @@ export default async function NewInvoicePage({
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect(`/${locale}/login`);
 
-  // Verify lawyer is assigned to this case
-  const { data: assignment } = await supabase
-    .from('case_lawyers')
-    .select('id')
-    .eq('case_id', caseId)
-    .eq('lawyer_id', user.id)
-    .eq('status', 'active')
-    .maybeSingle();
+  // ── Parallel: verify assignment + fetch case ─────────────────
+  const [{ data: assignment }, { data: caseRow }] = await Promise.all([
+    supabase
+      .from('case_lawyers')
+      .select('id')
+      .eq('case_id', caseId)
+      .eq('lawyer_id', user.id)
+      .eq('status', 'active')
+      .maybeSingle(),
+    supabase
+      .from('cases')
+      .select('id, title, users!cases_client_id_fkey(full_name)')
+      .eq('id', caseId)
+      .maybeSingle(),
+  ]);
 
   if (!assignment) notFound();
-
-  // Fetch case + client info
-  const { data: caseRow } = await supabase
-    .from('cases')
-    .select('id, title, users!cases_client_id_fkey(full_name)')
-    .eq('id', caseId)
-    .maybeSingle();
-
   if (!caseRow) notFound();
 
   const clientName = (caseRow.users as unknown as { full_name: string } | null)?.full_name ?? 'Client';

@@ -1,9 +1,13 @@
-import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
+import { redirect }        from 'next/navigation';
+import { createClient }    from '@/lib/supabase/server';
 import { LanguageSwitcher } from '@/components/language-switcher';
-import { ThemeToggle } from '@/components/theme-toggle';
-import { NotificationsHub }      from '@/components/notifications/notifications-hub';
-import { OnboardingController } from '@/components/onboarding/onboarding-controller';
+import { ThemeToggle }     from '@/components/theme-toggle';
+import dynamic             from 'next/dynamic';
+
+// Lazy-load heavy client components — they're not needed for initial HTML render.
+// This splits them into separate JS chunks that only load after hydration.
+const NotificationsHub    = dynamic(() => import('@/components/notifications/notifications-hub').then(m => ({ default: m.NotificationsHub })), { ssr: false });
+const OnboardingController = dynamic(() => import('@/components/onboarding/onboarding-controller').then(m => ({ default: m.OnboardingController })), { ssr: false });
 import {
   Shield, LayoutDashboard, FolderOpen, Lock,
   Calendar, Bell, Settings, CreditCard, Mic, LogOut, FileText,
@@ -33,17 +37,19 @@ export default async function DashboardLayout({
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect(`/${locale}/login`);
 
-  const { count: unreadCount } = await supabase
-    .from('notifications')
-    .select('id', { count: 'exact', head: true })
-    .eq('user_id', user.id)
-    .is('read_at', null);
-
-  const { data: profile } = await supabase
-    .from('users')
-    .select('full_name, onboarding_completed, first_case_created_at')
-    .eq('id', user.id)
-    .maybeSingle();
+  // ── Parallelise DB queries — was 2 serial round-trips, now 1 ──
+  const [{ count: unreadCount }, { data: profile }] = await Promise.all([
+    supabase
+      .from('notifications')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .is('read_at', null),
+    supabase
+      .from('users')
+      .select('full_name, onboarding_completed, first_case_created_at')
+      .eq('id', user.id)
+      .maybeSingle(),
+  ]);
 
   const initials = (profile?.full_name ?? user.email ?? '?')
     .split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase();

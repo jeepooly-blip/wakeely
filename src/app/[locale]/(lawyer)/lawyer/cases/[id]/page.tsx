@@ -24,7 +24,7 @@ export default async function LawyerCaseDetailPage({
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect(`/${locale}/login`);
 
-  // Verify lawyer is assigned
+  // Verify assignment first — gate everything behind it
   const { data: assignment } = await supabase
     .from('case_lawyers')
     .select('id, created_at')
@@ -34,27 +34,27 @@ export default async function LawyerCaseDetailPage({
     .maybeSingle();
   if (!assignment) notFound();
 
-  // Fetch case data
-  const { data: c } = await supabase
-    .from('cases')
-    .select(`
-      id, title, case_type, jurisdiction, city, status, health_score,
-      description, created_at, updated_at,
-      deadlines(id, title, due_date, type, status),
-      documents(id, file_name, file_size, version, created_at),
-      users!cases_client_id_fkey(id, full_name, email, phone)
-    `)
-    .eq('id', id)
-    .maybeSingle();
+  // ── Parallel: case data + action logs ────────────────────────
+  const [{ data: c }, { data: actionLogs }] = await Promise.all([
+    supabase
+      .from('cases')
+      .select(`
+        id, title, case_type, jurisdiction, city, status, health_score,
+        description, created_at, updated_at,
+        deadlines(id, title, due_date, type, status),
+        documents(id, file_name, file_size, version, created_at),
+        users!cases_client_id_fkey(id, full_name, email, phone)
+      `)
+      .eq('id', id)
+      .maybeSingle(),
+    supabase
+      .from('action_logs')
+      .select('*')
+      .eq('case_id', id)
+      .eq('lawyer_id', user.id)
+      .order('action_date', { ascending: false }),
+  ]);
   if (!c) notFound();
-
-  // Fetch lawyer's own action logs for this case
-  const { data: actionLogs } = await supabase
-    .from('action_logs')
-    .select('*')
-    .eq('case_id', id)
-    .eq('lawyer_id', user.id)
-    .order('action_date', { ascending: false });
 
   type DeadlineRow = { id: string; title: string; due_date: string; type: string; status: string };
   type DocRow = { id: string; file_name: string; file_size: number; version: number; created_at: string };

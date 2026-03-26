@@ -18,22 +18,22 @@ export default async function VaultPage({
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect(`/${locale}/login`);
 
-  // Resolve tier & compute storage usage
-  const { data: profile } = await supabase
-    .from('users')
-    .select('subscription_tier')
-    .eq('id', user.id)
-    .maybeSingle();
+  // ── Parallel: profile (for tier) + active cases ─────────────
+  const [{ data: profile }, { data: cases }] = await Promise.all([
+    supabase
+      .from('users')
+      .select('subscription_tier')
+      .eq('id', user.id)
+      .maybeSingle(),
+    supabase
+      .from('cases')
+      .select('id, title')
+      .eq('client_id', user.id)
+      .eq('status', 'active'),
+  ]);
 
   const tier = profile?.subscription_tier ?? 'basic';
   const storageCheck = await checkStorageLimit(user.id, tier, supabase);
-
-  // Fetch all documents across user's cases
-  const { data: cases } = await supabase
-    .from('cases')
-    .select('id, title')
-    .eq('client_id', user.id)
-    .eq('status', 'active');
 
   const caseIds  = (cases ?? []).map((c) => c.id);
   const caseMap  = Object.fromEntries((cases ?? []).map((c) => [c.id, c.title]));

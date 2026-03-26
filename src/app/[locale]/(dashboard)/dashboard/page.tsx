@@ -58,25 +58,26 @@ export default async function DashboardPage({
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect(`/${locale}/login`);
 
-  // ── Data fetching ──────────────────────────────────────────
-  const { data: cases } = await supabase
-    .from('cases')
-    .select(`
-      id, title, case_type, jurisdiction, status, health_score,
-      lawyer_name, created_at, updated_at,
-      deadlines(id, title, due_date, status, type),
-      nde_flags(id, severity, rule_id, triggered_at, resolved_at),
-      documents(id)
-    `)
-    .eq('client_id', user.id)
-    .eq('status', 'active')
-    .order('updated_at', { ascending: false });
-
-  const { data: profile } = await supabase
-    .from('users')
-    .select('full_name, subscription_tier')
-    .eq('id', user.id)
-    .maybeSingle();
+  // ── Parallel data fetching — was 2 serial round-trips ────────
+  const [{ data: cases }, { data: profile }] = await Promise.all([
+    supabase
+      .from('cases')
+      .select(`
+        id, title, case_type, jurisdiction, status, health_score,
+        lawyer_name, created_at, updated_at,
+        deadlines(id, title, due_date, status, type),
+        nde_flags(id, severity, rule_id, triggered_at, resolved_at),
+        documents(id)
+      `)
+      .eq('client_id', user.id)
+      .eq('status', 'active')
+      .order('updated_at', { ascending: false }),
+    supabase
+      .from('users')
+      .select('full_name, subscription_tier')
+      .eq('id', user.id)
+      .maybeSingle(),
+  ]);
 
   const activeCases = cases ?? [];
 

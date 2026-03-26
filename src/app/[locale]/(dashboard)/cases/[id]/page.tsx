@@ -1,15 +1,19 @@
-import { notFound, redirect } from 'next/navigation';
-import { getLocale } from 'next-intl/server';
-import { createClient } from '@/lib/supabase/server';
-import { Link } from '@/i18n/navigation';
-import { NDEAlertBanner, type NDEFlag } from '@/components/nde/nde-alert-banner';
-import { LawyerAccessPanel } from '@/components/lawyer/lawyer-access-panel';
-import { InviteButton }       from '@/components/cases/invite-button';
-import { LawyerScorePanel }   from '@/components/scores/lawyer-score-panel';
-import { CaseHealthCard }     from '@/components/scores/case-health-card';
-import { HealthBadge }        from '@/components/scores/health-badge';
-import { AISummaryPanel }     from '@/components/cases/ai-summary-panel';
-import { cn } from '@/lib/utils';
+import { notFound, redirect }  from 'next/navigation';
+import { getLocale }           from 'next-intl/server';
+import { createClient }        from '@/lib/supabase/server';
+import { Link }                from '@/i18n/navigation';
+import { HealthBadge }         from '@/components/scores/health-badge';
+import { cn }                  from '@/lib/utils';
+import dynamic                 from 'next/dynamic';
+import type { NDEFlag }        from '@/components/nde/nde-alert-banner';
+
+// Lazy-load client panels — split into separate chunks, loaded after HTML
+const NDEAlertBanner  = dynamic(() => import('@/components/nde/nde-alert-banner').then(m => ({ default: m.NDEAlertBanner })), { ssr: false });
+const LawyerAccessPanel = dynamic(() => import('@/components/lawyer/lawyer-access-panel').then(m => ({ default: m.LawyerAccessPanel })), { ssr: false });
+const InviteButton    = dynamic(() => import('@/components/cases/invite-button').then(m => ({ default: m.InviteButton })), { ssr: false });
+const LawyerScorePanel = dynamic(() => import('@/components/scores/lawyer-score-panel').then(m => ({ default: m.LawyerScorePanel })), { ssr: false });
+const CaseHealthCard  = dynamic(() => import('@/components/scores/case-health-card').then(m => ({ default: m.CaseHealthCard })), { ssr: false });
+const AISummaryPanel  = dynamic(() => import('@/components/cases/ai-summary-panel').then(m => ({ default: m.AISummaryPanel })), { ssr: false });
 import {
   ArrowLeft, ArrowRight, Scale, Calendar, FileText,
   CheckCircle2, Clock, Hash, Plus, AlertTriangle,
@@ -32,30 +36,29 @@ export default async function CaseDetailPage({
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect(`/${locale}/login`);
 
-  // Fetch subscription tier + cached AI summary in parallel
-  const [{ data: profileRow }, { data: cachedSummary }] = await Promise.all([
+  // ── All 3 queries in parallel ─────────────────────────────────
+  const [{ data: profileRow }, { data: cachedSummary }, { data: c }] = await Promise.all([
     supabase.from('users').select('subscription_tier').eq('id', user.id).maybeSingle(),
     supabase.from('case_summaries').select('id, case_id, generated_at, language, summary_json')
       .eq('case_id', id).maybeSingle(),
+    supabase
+      .from('cases')
+      .select(`
+        id, title, case_type, jurisdiction, city, status, health_score,
+        lawyer_name, lawyer_bar_number, lawyer_phone, lawyer_email,
+        description, created_at, updated_at,
+        deadlines(id, title, due_date, type, status, created_at),
+        nde_flags(id, rule_id, severity, triggered_at, resolved_at, action_taken),
+        documents(id, file_name, file_size, file_hash, version, created_at),
+        timeline_events(id, event_type, payload, actor_id, is_system_generated, created_at)
+      `)
+      .eq('id', id)
+      .eq('client_id', user.id)
+      .maybeSingle(),
   ]);
-  const subscriptionTier = profileRow?.subscription_tier ?? 'basic';
-
-  const { data: c } = await supabase
-    .from('cases')
-    .select(`
-      id, title, case_type, jurisdiction, city, status, health_score,
-      lawyer_name, lawyer_bar_number, lawyer_phone, lawyer_email,
-      description, created_at, updated_at,
-      deadlines(id, title, due_date, type, status, created_at),
-      nde_flags(id, rule_id, severity, triggered_at, resolved_at, action_taken),
-      documents(id, file_name, file_size, file_hash, version, created_at),
-      timeline_events(id, event_type, payload, actor_id, is_system_generated, created_at)
-    `)
-    .eq('id', id)
-    .eq('client_id', user.id)
-    .maybeSingle();
 
   if (!c) notFound();
+  const subscriptionTier = profileRow?.subscription_tier ?? 'basic';
 
   type DeadlineRow  = { id: string; title: string; due_date: string; type: string; status: string };
   type FlagRow      = { id: string; rule_id: number; severity: string; triggered_at: string; resolved_at: string | null; action_taken: string | null };

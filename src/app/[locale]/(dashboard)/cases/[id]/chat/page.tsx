@@ -1,9 +1,18 @@
 import { notFound, redirect } from 'next/navigation';
-import { getLocale } from 'next-intl/server';
-import { createClient } from '@/lib/supabase/server';
-import { SecureChat } from '@/components/chat/secure-chat';
-import { Link } from '@/i18n/navigation';
+import { getLocale }          from 'next-intl/server';
+import { createClient }       from '@/lib/supabase/server';
+import { Link }               from '@/i18n/navigation';
 import { ArrowLeft, ArrowRight, MessageCircle, Lock, Shield } from 'lucide-react';
+import dynamic                from 'next/dynamic';
+
+const SecureChat = dynamic(() => import('@/components/chat/secure-chat').then(m => ({ default: m.SecureChat })), {
+  ssr: false,
+  loading: () => (
+    <div className="flex items-center justify-center h-64">
+      <div className="h-7 w-7 rounded-full border-4 border-[#1A3557] border-t-transparent animate-spin" />
+    </div>
+  ),
+});
 
 export default async function CaseChatPage({
   params,
@@ -19,25 +28,21 @@ export default async function CaseChatPage({
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect(`/${locale}/login`);
 
-  // Fetch user profile for role
-  const { data: profile } = await supabase
-    .from('users')
-    .select('role, full_name')
-    .eq('id', user.id)
-    .maybeSingle();
+  // ── Parallel: profile + case access check ────────────────────
+  const [{ data: profile }, [{ data: ownedCase }, { data: assignment }]] = await Promise.all([
+    supabase.from('users').select('role, full_name, subscription_tier').eq('id', user.id).maybeSingle(),
+    Promise.all([
+      supabase.from('cases').select('id, title').eq('id', id).eq('client_id', user.id).maybeSingle(),
+      supabase.from('case_lawyers')
+        .select('case_id, cases!inner(id, title)')
+        .eq('case_id', id)
+        .eq('lawyer_id', user.id)
+        .eq('status', 'active')
+        .maybeSingle(),
+    ]),
+  ]);
 
   const userRole = (profile?.role ?? 'client') as 'client' | 'lawyer' | 'admin';
-
-  // Verify access: client owns case OR lawyer is assigned
-  const [{ data: ownedCase }, { data: assignment }] = await Promise.all([
-    supabase.from('cases').select('id, title').eq('id', id).eq('client_id', user.id).maybeSingle(),
-    supabase.from('case_lawyers')
-      .select('case_id, cases!inner(id, title)')
-      .eq('case_id', id)
-      .eq('lawyer_id', user.id)
-      .eq('status', 'active')
-      .maybeSingle(),
-  ]);
 
   if (!ownedCase && !assignment) notFound();
 
@@ -86,6 +91,7 @@ export default async function CaseChatPage({
           userId={user.id}
           userRole={userRole}
           locale={locale}
+          subscriptionTier={profile?.subscription_tier ?? 'basic'}
         />
       </div>
     </div>
