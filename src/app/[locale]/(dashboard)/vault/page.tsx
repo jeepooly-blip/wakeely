@@ -4,6 +4,7 @@ import { Link } from '@/i18n/navigation';
 import { Lock, FileText, FolderOpen, Calendar, Hash, Scale, HardDrive } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { checkStorageLimit } from '@/lib/feature-gate';
+import { VaultShareButton } from '@/components/vault/share-button';
 
 export default async function VaultPage({
   params,
@@ -133,32 +134,39 @@ export default async function VaultPage({
 
           <div className="divide-y divide-border">
             {allDocs.map((doc) => (
-              <div key={doc.id} className="flex items-center gap-4 px-5 py-4 hover:bg-muted/30 transition">
-                <span className="text-2xl shrink-0">{getFileIcon(doc.mime_type ?? '')}</span>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-foreground truncate">{doc.file_name}</p>
-                  <div className="flex items-center gap-3 mt-0.5 text-[10px] text-muted-foreground flex-wrap">
-                    <span className="flex items-center gap-1">
-                      <FolderOpen className="h-3 w-3" />
-                      {caseMap[doc.case_id] ?? doc.case_id.slice(0, 8)}
-                    </span>
-                    <span className="flex items-center gap-1" dir="ltr">
-                      <Hash className="h-3 w-3" />
-                      {doc.file_hash?.slice(0, 12)}…
-                    </span>
-                    <span>v{doc.version}</span>
-                    <span>{fmtSize(doc.file_size ?? 0)}</span>
-                    <span className="flex items-center gap-1">
-                      <Calendar className="h-3 w-3" />
-                      {fmtDate(doc.created_at)}
-                    </span>
+                <div key={doc.id} className="flex items-center gap-4 px-5 py-4 hover:bg-muted/30 transition">
+                  <span className="text-2xl shrink-0">{getFileIcon(doc.mime_type ?? '')}</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-foreground truncate">{doc.file_name}</p>
+                    <div className="flex items-center gap-3 mt-0.5 text-[10px] text-muted-foreground flex-wrap">
+                      <span className="flex items-center gap-1">
+                        <FolderOpen className="h-3 w-3" />
+                        {caseMap[doc.case_id] ?? doc.case_id.slice(0, 8)}
+                      </span>
+                      <span className="flex items-center gap-1" dir="ltr">
+                        <Hash className="h-3 w-3" />
+                        {doc.file_hash?.slice(0, 12)}…
+                      </span>
+                      <span>v{doc.version}</span>
+                      <span>{fmtSize(doc.file_size ?? 0)}</span>
+                      <span className="flex items-center gap-1">
+                        <Calendar className="h-3 w-3" />
+                        {fmtDate(doc.created_at)}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <VaultShareButton
+                      documentId={doc.id}
+                      fileName={doc.file_name}
+                      locale={locale}
+                    />
+                    <Link href={`/cases/${doc.case_id}`}
+                      className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition">
+                      {isRTL ? 'القضية' : 'Case'}
+                    </Link>
                   </div>
                 </div>
-                <Link href={`/cases/${doc.case_id}`}
-                  className="shrink-0 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition">
-                  {isRTL ? 'القضية' : 'Case'}
-                </Link>
-              </div>
             ))}
           </div>
         </div>
