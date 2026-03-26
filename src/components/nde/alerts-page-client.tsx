@@ -108,32 +108,48 @@ export function AlertsPageClient({ initialFlags }: AlertsPageClientProps) {
     3: t('rule3.name'),
   })[ruleId];
 
-  const getRuleDesc = (f: FlagWithCase) => {
-    const days = (f.payload?.days_silent as number) ?? 0;
-    return ({
-      1: t('rule1.description').replace('{days}', String(days)),
-      2: t('rule2.description'),
-      3: t('rule3.description').replace('{days}', String(days)),
-    })[f.rule_id];
-  };
-
-  const getActions = (ruleId: 1 | 2 | 3) => ({
-    1: [
-      { label: t('cta.sendReminder'), action: 'send_reminder',    icon: Send    },
-      { label: t('cta.logUpdate'),    action: 'log_update',        icon: FileText},
-      { label: t('cta.dismiss'),      action: 'dismissed',         icon: X       },
-    ],
-    2: [
-      { label: t('cta.escalate'),     action: 'start_escalation',  icon: Scale   },
-      { label: t('cta.logUpdate'),    action: 'log_update',        icon: FileText},
-      { label: t('cta.dismiss'),      action: 'dismissed',         icon: X       },
-    ],
-    3: [
-      { label: t('cta.escalate'),     action: 'start_escalation',  icon: Scale   },
-      { label: t('cta.sendReminder'), action: 'send_reminder',    icon: Send    },
-      { label: t('cta.dismiss'),      action: 'dismissed',         icon: X       },
-    ],
-  })[ruleId];
+ const getRuleDesc = (f: FlagWithCase) => {
+  const days = (f.payload?.days_silent as number) ?? 0;
+  switch (f.rule_id) {
+    case 1:
+      return t('rule1.description').replace('{days}', String(days));
+    case 2:
+      return t('rule2.description');
+    case 3:
+      return t('rule3.description').replace('{days}', String(days));
+    case 4:
+      return t('rule4.description'); // add translation if needed
+    case 5:
+      return t('rule5.description'); // adjust as necessary
+    case 6:
+      return t('rule6.description');
+    case 7:
+      return t('rule7.description');
+    default:
+      return t('unknown_rule_description'); // fallback
+  }
+};
+ const getActions = (ruleId: number) => {
+  // Define actions per rule. For rules without specific actions, return an empty array.
+  switch (ruleId) {
+    case 1:
+      return [ /* actions for rule 1 */ ];
+    case 2:
+      return [ /* actions for rule 2 */ ];
+    case 3:
+      return [ /* actions for rule 3 */ ];
+    case 4:
+      return [ /* actions for rule 4 */ ]; // e.g., [{ label: 'Acknowledge', onClick: ... }]
+    case 5:
+      return [ /* actions for rule 5 */ ];
+    case 6:
+      return [ /* actions for rule 6 */ ];
+    case 7:
+      return [ /* actions for rule 7 */ ];
+    default:
+      return []; // no actions for unknown rules
+  }
+};
 
   const fmtDate = (ds: string) =>
     new Date(ds).toLocaleDateString(isRTL ? 'ar-AE' : 'en-AE', {
