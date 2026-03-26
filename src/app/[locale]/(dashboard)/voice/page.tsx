@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import type { SubscriptionTier } from '@/types';
 
-const VoiceAdvisor = dynamic(() => import('@/components/voice/voice-advisor').then(m => ({ default: m.VoiceAdvisor })), { ssr: false });
+const VoiceAdvisor = dynamic(() => import('@/components/voice/voice-advisor').then(m => ({ default: m.VoiceAdvisor })));
 
 export default async function VoicePage({
   params,

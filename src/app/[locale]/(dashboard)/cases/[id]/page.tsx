@@ -8,12 +8,12 @@ import dynamic                 from 'next/dynamic';
 import type { NDEFlag }        from '@/components/nde/nde-alert-banner';
 
 // Lazy-load client panels — split into separate chunks, loaded after HTML
-const NDEAlertBanner  = dynamic(() => import('@/components/nde/nde-alert-banner').then(m => ({ default: m.NDEAlertBanner })), { ssr: false });
-const LawyerAccessPanel = dynamic(() => import('@/components/lawyer/lawyer-access-panel').then(m => ({ default: m.LawyerAccessPanel })), { ssr: false });
-const InviteButton    = dynamic(() => import('@/components/cases/invite-button').then(m => ({ default: m.InviteButton })), { ssr: false });
-const LawyerScorePanel = dynamic(() => import('@/components/scores/lawyer-score-panel').then(m => ({ default: m.LawyerScorePanel })), { ssr: false });
-const CaseHealthCard  = dynamic(() => import('@/components/scores/case-health-card').then(m => ({ default: m.CaseHealthCard })), { ssr: false });
-const AISummaryPanel  = dynamic(() => import('@/components/cases/ai-summary-panel').then(m => ({ default: m.AISummaryPanel })), { ssr: false });
+const NDEAlertBanner  = dynamic(() => import('@/components/nde/nde-alert-banner').then(m => ({ default: m.NDEAlertBanner })));
+const LawyerAccessPanel = dynamic(() => import('@/components/lawyer/lawyer-access-panel').then(m => ({ default: m.LawyerAccessPanel })));
+const InviteButton    = dynamic(() => import('@/components/cases/invite-button').then(m => ({ default: m.InviteButton })));
+const LawyerScorePanel = dynamic(() => import('@/components/scores/lawyer-score-panel').then(m => ({ default: m.LawyerScorePanel })));
+const CaseHealthCard  = dynamic(() => import('@/components/scores/case-health-card').then(m => ({ default: m.CaseHealthCard })));
+const AISummaryPanel  = dynamic(() => import('@/components/cases/ai-summary-panel').then(m => ({ default: m.AISummaryPanel })));
 import {
   ArrowLeft, ArrowRight, Scale, Calendar, FileText,
   CheckCircle2, Clock, Hash, Plus, AlertTriangle,

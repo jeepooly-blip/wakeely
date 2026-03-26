@@ -6,7 +6,6 @@ import { ArrowLeft, ArrowRight, MessageCircle, Lock, Shield } from 'lucide-react
 import dynamic                from 'next/dynamic';
 
 const SecureChat = dynamic(() => import('@/components/chat/secure-chat').then(m => ({ default: m.SecureChat })), {
-  ssr: false,
   loading: () => (
     <div className="flex items-center justify-center h-64">
       <div className="h-7 w-7 rounded-full border-4 border-[#1A3557] border-t-transparent animate-spin" />

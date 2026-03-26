@@ -6,8 +6,8 @@ import dynamic             from 'next/dynamic';
 
 // Lazy-load heavy client components — they're not needed for initial HTML render.
 // This splits them into separate JS chunks that only load after hydration.
-const NotificationsHub    = dynamic(() => import('@/components/notifications/notifications-hub').then(m => ({ default: m.NotificationsHub })), { ssr: false });
-const OnboardingController = dynamic(() => import('@/components/onboarding/onboarding-controller').then(m => ({ default: m.OnboardingController })), { ssr: false });
+const NotificationsHub    = dynamic(() => import('@/components/notifications/notifications-hub').then(m => ({ default: m.NotificationsHub })));
+const OnboardingController = dynamic(() => import('@/components/onboarding/onboarding-controller').then(m => ({ default: m.OnboardingController })));
 import {
   Shield, LayoutDashboard, FolderOpen, Lock,
   Calendar, Bell, Settings, CreditCard, Mic, LogOut, FileText,
