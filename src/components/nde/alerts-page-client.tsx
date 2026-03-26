@@ -102,54 +102,47 @@ export function AlertsPageClient({ initialFlags }: AlertsPageClientProps) {
   const openCount     = flags.filter((f) => !f.resolved_at).length;
   const resolvedCount = flags.filter((f) =>  f.resolved_at).length;
 
-  const getRuleName = (ruleId: 1 | 2 | 3) => ({
+  const getRuleName = (ruleId: 1 | 2 | 3 | 4 | 5 | 6 | 7) => ({
     1: t('rule1.name'),
     2: t('rule2.name'),
     3: t('rule3.name'),
-  })[ruleId];
+    4: isRTL ? 'رسالة بدون ردّ'       : 'Chat Non-Response',
+    5: isRTL ? 'طلب مستند مُهمَل'     : 'Document Request Ignored',
+    6: isRTL ? 'اقتراب موعد الجلسة'  : 'Hearing Proximity Alert',
+    7: isRTL ? 'خزنة الأدلة فارغة'   : 'Vault Empty Warning',
+  }[ruleId] ?? `Rule ${ruleId}`);
 
- const getRuleDesc = (f: FlagWithCase) => {
-  const days = (f.payload?.days_silent as number) ?? 0;
-  switch (f.rule_id) {
-    case 1:
-      return t('rule1.description').replace('{days}', String(days));
-    case 2:
-      return t('rule2.description');
-    case 3:
-      return t('rule3.description').replace('{days}', String(days));
-    case 4:
-      return t('rule4.description'); // add translation if needed
-    case 5:
-      return t('rule5.description'); // adjust as necessary
-    case 6:
-      return t('rule6.description');
-    case 7:
-      return t('rule7.description');
-    default:
-      return t('unknown_rule_description'); // fallback
-  }
-};
- const getActions = (ruleId: number) => {
-  // Define actions per rule. For rules without specific actions, return an empty array.
-  switch (ruleId) {
-    case 1:
-      return [ /* actions for rule 1 */ ];
-    case 2:
-      return [ /* actions for rule 2 */ ];
-    case 3:
-      return [ /* actions for rule 3 */ ];
-    case 4:
-      return [ /* actions for rule 4 */ ]; // e.g., [{ label: 'Acknowledge', onClick: ... }]
-    case 5:
-      return [ /* actions for rule 5 */ ];
-    case 6:
-      return [ /* actions for rule 6 */ ];
-    case 7:
-      return [ /* actions for rule 7 */ ];
-    default:
-      return []; // no actions for unknown rules
-  }
-};
+  const getRuleDesc = (f: FlagWithCase) => {
+    const days = (f.payload?.days_silent as number) ?? 0;
+    return ({
+      1: t('rule1.description').replace('{days}', String(days)),
+      2: t('rule2.description'),
+      3: t('rule3.description').replace('{days}', String(days)),
+      4: isRTL ? 'لم يردّ المحامي على رسالتك خلال 48 ساعة'      : 'No lawyer reply within 48 hours of your message',
+      5: isRTL ? 'طُلب مستند ولم يُرفع منذ أكثر من 5 أيام'       : 'A document was requested but not uploaded for 5+ days',
+      6: isRTL ? 'جلسة خلال 3 أيام أو أقل ولا يوجد نشاط للمحامي' : 'Court hearing in ≤3 days with no recent lawyer activity',
+      7: isRTL ? 'مضى أكثر من 7 أيام على القضية وخزنة الأدلة فارغة' : 'Case is 7+ days old with no documents in the vault',
+    } as Record<number, string>)[f.rule_id] ?? '';
+  };
+
+  const getActions = (ruleId: 1 | 2 | 3 | 4 | 5 | 6 | 7) => {
+    const dismiss = { label: t('cta.dismiss'), action: 'dismissed' as const, icon: X };
+    const remind  = { label: t('cta.sendReminder'), action: 'send_reminder' as const, icon: Send };
+    const escalate = { label: t('cta.escalate'), action: 'start_escalation' as const, icon: Scale };
+    const log     = { label: t('cta.logUpdate'), action: 'log_update' as const, icon: FileText };
+
+    type ActionItem = { label: string; action: string; icon: (props: { className?: string }) => React.ReactNode };
+    const map: Record<number, ActionItem[]> = {
+      1: [remind, log, dismiss],
+      2: [escalate, log, dismiss],
+      3: [escalate, remind, dismiss],
+      4: [remind, dismiss],
+      5: [remind, dismiss],
+      6: [escalate, remind, dismiss],
+      7: [log, dismiss],
+    };
+    return map[ruleId] ?? [dismiss];
+  };
 
   const fmtDate = (ds: string) =>
     new Date(ds).toLocaleDateString(isRTL ? 'ar-AE' : 'en-AE', {
