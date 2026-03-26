@@ -37,7 +37,6 @@ export async function middleware(request: NextRequest) {
   request.cookies.delete('NEXT_LOCALE');
 
   // ── STEP 2: Extract locale purely from the URL path
-  const pathname      = request.nextUrl.pathname;
   const pathSegments  = pathname.split('/');
   const urlLocale     = ['en', 'ar'].includes(pathSegments[1]) ? pathSegments[1] : 'ar';
 
