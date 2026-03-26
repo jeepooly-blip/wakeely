@@ -3,7 +3,7 @@ import { getLocale } from 'next-intl/server';
 import { createClient } from '@/lib/supabase/server';
 import { LanguageSwitcher } from '@/components/language-switcher';
 import { ThemeToggle } from '@/components/theme-toggle';
-import { Shield, FolderOpen, Settings, MessageCircle } from 'lucide-react';
+import { Shield, FolderOpen, Settings, MessageCircle, FileText } from 'lucide-react';
 
 export default async function LawyerLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
@@ -18,8 +18,9 @@ export default async function LawyerLayout({ children }: { children: React.React
   if (profile?.role !== 'lawyer' && profile?.role !== 'admin') redirect(`/${locale}/dashboard`);
 
   const navItems = [
-    { href: `/${locale}/lawyer/cases`,    icon: FolderOpen,    label: isRTL ? 'قضاياي' : 'My Cases' },
-    { href: `/${locale}/settings`,        icon: Settings,      label: isRTL ? 'الإعدادات' : 'Settings' },
+    { href: `/${locale}/lawyer/cases`,    icon: FolderOpen,  label: isRTL ? 'قضاياي'    : 'My Cases'  },
+    { href: `/${locale}/lawyer/invoices`, icon: FileText,    label: isRTL ? 'الفواتير'  : 'Invoices'  },
+    { href: `/${locale}/settings`,        icon: Settings,    label: isRTL ? 'الإعدادات' : 'Settings'  },
   ];
 
   return (

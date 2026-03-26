@@ -7,7 +7,7 @@ import { SecureChat } from '@/components/chat/secure-chat';
 import { cn } from '@/lib/utils';
 import {
   ArrowLeft, ArrowRight, Scale, Calendar, FileText, Clock,
-  CheckCircle2, AlertTriangle, User, ClipboardList, MessageCircle, Hash,
+  CheckCircle2, AlertTriangle, User, ClipboardList, MessageCircle, Hash, Receipt,
 } from 'lucide-react';
 
 export default async function LawyerCaseDetailPage({
@@ -242,6 +242,26 @@ export default async function LawyerCaseDetailPage({
           </div>
         </div>
       )}
+
+      {/* Invoice CTA */}
+      <div className="flex items-center justify-between rounded-2xl border border-[#C89B3C]/30 bg-[#C89B3C]/5 dark:bg-[#C89B3C]/10 px-5 py-4">
+        <div>
+          <p className="text-sm font-semibold text-foreground flex items-center gap-2">
+            <Receipt className="h-4 w-4 text-[#C89B3C]" />
+            {isRTL ? 'الفواتير' : 'Invoices'}
+          </p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {isRTL ? 'أنشئ فاتورة ضريبية متوافقة مع JoFotara وأرسلها للموكّل' : 'Create a JoFotara-compliant tax invoice and send it to the client'}
+          </p>
+        </div>
+        <Link
+          href={`/${locale}/lawyer/cases/${id}/invoices/new`}
+          className="flex items-center gap-1.5 rounded-xl bg-[#C89B3C] text-white px-4 py-2.5 text-xs font-bold hover:bg-[#b8892f] transition shrink-0"
+        >
+          <Receipt className="h-3.5 w-3.5" />
+          {isRTL ? 'إنشاء فاتورة' : 'Create Invoice'}
+        </Link>
+      </div>
 
       {/* Secure chat */}
       <div>

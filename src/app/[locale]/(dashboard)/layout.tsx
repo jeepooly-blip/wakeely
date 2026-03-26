@@ -6,7 +6,7 @@ import { NotificationsHub }      from '@/components/notifications/notifications-
 import { OnboardingController } from '@/components/onboarding/onboarding-controller';
 import {
   Shield, LayoutDashboard, FolderOpen, Lock,
-  Calendar, Bell, Settings, CreditCard, Mic, LogOut,
+  Calendar, Bell, Settings, CreditCard, Mic, LogOut, FileText,
 } from 'lucide-react';
 
 // ── Server action to sign out ────────────────────────────────
@@ -55,6 +55,7 @@ export default async function DashboardLayout({
     { href: `/${locale}/deadlines`,     icon: Calendar,        label: isRTL ? 'المواعيد'        : 'Deadlines'       },
     { href: `/${locale}/alerts`,        icon: Bell,            label: isRTL ? 'التنبيهات'       : 'Alerts'          },
     { href: `/${locale}/notifications`, icon: Bell,            label: isRTL ? 'الإشعارات'       : 'Notifications', badge: unreadCount ?? 0 },
+    { href: `/${locale}/invoices`,      icon: FileText,        label: isRTL ? 'الفواتير'        : 'Invoices'        },
     { href: `/${locale}/billing`,       icon: CreditCard,      label: isRTL ? 'الاشتراك'        : 'Billing'         },
     { href: `/${locale}/voice`,         icon: Mic,             label: isRTL ? 'المستشار الصوتي' : 'Voice Advisor'   },
     { href: `/${locale}/settings`,      icon: Settings,        label: isRTL ? 'الإعدادات'       : 'Settings'        },

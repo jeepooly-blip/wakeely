@@ -345,3 +345,74 @@ export interface VaultDocument {
   mime_type?: string;
   created_at: string;
 }
+
+// ── Invoice System ─────────────────────────────────────────────────
+
+export type InvoiceStatus =
+  | 'draft' | 'sent' | 'viewed' | 'paid' | 'overdue' | 'cancelled';
+
+export type InvoiceItemType = 'professional_service' | 'disbursement';
+
+export interface InvoiceItem {
+  id:             string;
+  invoice_id:     string;
+  item_type:      InvoiceItemType;
+  sort_order:     number;
+  action_log_id?: string;
+  item_date:      string;
+  description:    string;
+  hours?:         number;
+  rate?:          number;
+  quantity:       number;
+  unit_cost:      number;
+  amount:         number;
+  receipts?:      DisbursementReceipt[];
+}
+
+export interface DisbursementReceipt {
+  id:              string;
+  invoice_item_id: string;
+  uploaded_by:     string;
+  file_path:       string;
+  file_name:       string;
+  file_size?:      number;
+  created_at:      string;
+}
+
+export interface Invoice {
+  id:                     string;
+  case_id:                string;
+  lawyer_id:              string;
+  client_id:              string;
+  invoice_number:         string;
+  invoice_date:           string;
+  due_date:               string;
+  jofotara_ref?:          string;
+  tax_id?:                string;
+  tax_rate:               number;
+  matter_description:     string;
+  subtotal_services:      number;
+  subtotal_disbursements: number;
+  tax_amount:             number;
+  total_amount:           number;
+  currency:               string;
+  retainer_applied:       number;
+  retainer_balance:       number;
+  status:                 InvoiceStatus;
+  payment_method?:        string;
+  payment_reference?:     string;
+  paid_at?:               string;
+  payment_proof_path?:    string;
+  notes?:                 string;
+  late_payment_rate?:     number;
+  sent_at?:               string;
+  viewed_at?:             string;
+  created_at:             string;
+  updated_at:             string;
+  // Joined
+  items?:                 InvoiceItem[];
+  lawyer?:                Pick<WakeelaUser, 'id' | 'full_name' | 'email' | 'phone'>;
+  client?:                Pick<WakeelaUser, 'id' | 'full_name' | 'email' | 'phone'>;
+  case?:                  Pick<Case, 'id' | 'title' | 'case_type' | 'jurisdiction'>;
+}
+
