@@ -108,14 +108,21 @@ export function AlertsPageClient({ initialFlags }: AlertsPageClientProps) {
     3: t('rule3.name'),
   })[ruleId];
 
-  const getRuleDesc = (f: FlagWithCase) => {
-    const days = (f.payload?.days_silent as number) ?? 0;
-    return ({
-      1: t('rule1.description').replace('{days}', String(days)),
-      2: t('rule2.description'),
-      3: t('rule3.description').replace('{days}', String(days)),
-    })[f.rule_id];
-  };
+ const getRuleDesc = (f: FlagWithCase) => {
+  const days = (f.payload?.days_silent as number) ?? 0;
+  switch (f.rule_id) {
+    case 1:
+      return t('rule1.description').replace('{days}', String(days));
+    case 2:
+      return t('rule2.description');
+    case 3:
+      return t('rule3.description').replace('{days}', String(days));
+    case 4:
+      return t('rule4.description'); // or whatever is appropriate
+    default:
+      return t('unknown_rule_description'); // fallback
+  }
+}
 
   const getActions = (ruleId: 1 | 2 | 3) => ({
     1: [
