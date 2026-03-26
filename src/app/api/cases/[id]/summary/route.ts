@@ -206,23 +206,20 @@ Generate the structured case summary.`;
   }
 
   // ── Timeline event ────────────────────────────────────────────
-  await sb.from('timeline_events').insert({
-    case_id:             caseId,
-    actor_id:            user.id,
-    event_type:          'ai_summary_generated',
-    payload:             { language: locale, summary_id: saved.id },
-    is_system_generated: true,
-try {
-  await supabase
-    .from('timeline_events')
-    .insert({
-      payload: { language: locale, summary_id: saved.id },
-      is_system_generated: true,
-    });
-} catch (error) {
-  // Optionally log the error, but ignore it silently
-  console.error('Failed to insert timeline event:', error);
-}
+  try {
+    await sb
+      .from('timeline_events')
+      .insert({
+        case_id:             caseId,
+        actor_id:            user.id,
+        event_type:          'ai_summary_generated',
+        payload:             { language: locale, summary_id: saved.id },
+        is_system_generated: true,
+      });
+  } catch (error) {
+    // Log but don't fail the request
+    console.error('[case-summary] Failed to insert timeline event:', error);
+  }
 
   return NextResponse.json(saved);
 }
