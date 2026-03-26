@@ -4,10 +4,11 @@ import { createClient } from '@/lib/supabase/server';
 import { Link } from '@/i18n/navigation';
 import { NDEAlertBanner, type NDEFlag } from '@/components/nde/nde-alert-banner';
 import { LawyerAccessPanel } from '@/components/lawyer/lawyer-access-panel';
-import { InviteButton } from '@/components/cases/invite-button';
-import { LawyerScorePanel } from '@/components/scores/lawyer-score-panel';
-import { CaseHealthCard } from '@/components/scores/case-health-card';
-import { HealthBadge } from '@/components/scores/health-badge';
+import { InviteButton }       from '@/components/cases/invite-button';
+import { LawyerScorePanel }   from '@/components/scores/lawyer-score-panel';
+import { CaseHealthCard }     from '@/components/scores/case-health-card';
+import { HealthBadge }        from '@/components/scores/health-badge';
+import { AISummaryPanel }     from '@/components/cases/ai-summary-panel';
 import { cn } from '@/lib/utils';
 import {
   ArrowLeft, ArrowRight, Scale, Calendar, FileText,
@@ -30,6 +31,14 @@ export default async function CaseDetailPage({
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect(`/${locale}/login`);
+
+  // Fetch subscription tier + cached AI summary in parallel
+  const [{ data: profileRow }, { data: cachedSummary }] = await Promise.all([
+    supabase.from('users').select('subscription_tier').eq('id', user.id).maybeSingle(),
+    supabase.from('case_summaries').select('id, case_id, generated_at, language, summary_json')
+      .eq('case_id', id).maybeSingle(),
+  ]);
+  const subscriptionTier = profileRow?.subscription_tier ?? 'basic';
 
   const { data: c } = await supabase
     .from('cases')
@@ -90,6 +99,8 @@ export default async function CaseDetailPage({
       nde_flag:                AlertTriangle, nde_flag_resolved: CheckCircle2,
       deadline_reminder_sent:  Clock,         action_logged:     Layers,
       lawyer_joined:           MessageCircle, lawyer_revoked:    AlertTriangle,
+      invoice_issued:          FileText,      invoice_paid:      CheckCircle2,
+      ai_summary_generated:    BarChart2,     witness_view:      Hash,
     };
     return m[type] ?? Clock;
   };
@@ -101,27 +112,34 @@ export default async function CaseDetailPage({
     if (type === 'lawyer_joined')  return 'text-[#0E7490]  bg-[#0E7490]/10';
     if (type === 'lawyer_revoked') return 'text-red-600    bg-red-50     dark:bg-red-900/30';
     if (type.includes('deadline')) return 'text-[#0E7490]  bg-[#0E7490]/10';
+    if (type === 'invoice_issued') return 'text-[#C89B3C]  bg-[#C89B3C]/10';
+    if (type === 'invoice_paid')   return 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30';
+    if (type === 'ai_summary_generated') return 'text-[#C89B3C] bg-[#C89B3C]/10';
     return 'text-[#1A3557] bg-[#1A3557]/10';
   };
 
   const eventLabel = (type: string, payload: Record<string, unknown>) => {
     const m: Record<string, string> = {
-      case_created:           isRTL ? 'تم إنشاء القضية'            : 'Case created',
-      document_uploaded:      isRTL ? `رُفع: ${payload.file_name ?? ''}` : `Uploaded: ${payload.file_name ?? ''}`,
-      deadline_added:         isRTL ? `موعد جديد: ${payload.title ?? ''}` : `Deadline added: ${payload.title ?? ''}`,
-      deadline_completed:     isRTL ? 'تم إكمال موعد'              : 'Deadline completed',
-      deadline_reminder_sent: isRTL ? 'تم إرسال تذكير'             : 'Reminder sent',
-      action_logged:          isRTL ? `إجراء مسجّل: ${payload.description ?? ''}` : `Action logged: ${payload.description ?? ''}`,
-      lawyer_joined:          isRTL ? 'انضم محامٍ إلى القضية'       : 'Lawyer joined case',
-      lawyer_revoked:         isRTL ? 'تم إلغاء صلاحية المحامي'    : 'Lawyer access revoked',
-      nde_flag:               isRTL ? `تنبيه NDE: ${payload.rule_name as string ?? ''}` : `Alert: ${payload.rule_name as string ?? payload.message as string ?? ''}`,
-      nde_flag_resolved:      isRTL ? `تم حل التنبيه — ${payload.action_taken as string ?? ''}` : `Alert resolved — ${payload.action_taken as string ?? ''}`,
+      case_created:            isRTL ? 'تم إنشاء القضية'                               : 'Case created',
+      document_uploaded:       isRTL ? `رُفع: ${payload.file_name ?? ''}`               : `Uploaded: ${payload.file_name ?? ''}`,
+      deadline_added:          isRTL ? `موعد جديد: ${payload.title ?? ''}`               : `Deadline added: ${payload.title ?? ''}`,
+      deadline_completed:      isRTL ? 'تم إكمال موعد'                                  : 'Deadline completed',
+      deadline_reminder_sent:  isRTL ? 'تم إرسال تذكير'                                 : 'Reminder sent',
+      action_logged:           isRTL ? `إجراء مسجّل: ${payload.description ?? ''}`       : `Action logged: ${payload.description ?? ''}`,
+      lawyer_joined:           isRTL ? 'انضم محامٍ إلى القضية'                           : 'Lawyer joined case',
+      lawyer_revoked:          isRTL ? 'تم إلغاء صلاحية المحامي'                        : 'Lawyer access revoked',
+      nde_flag:                isRTL ? `تنبيه NDE: ${payload.rule_name as string ?? ''}` : `Alert: ${payload.rule_name as string ?? payload.message as string ?? ''}`,
+      nde_flag_resolved:       isRTL ? `تم حل التنبيه — ${payload.action_taken as string ?? ''}` : `Alert resolved — ${payload.action_taken as string ?? ''}`,
+      invoice_issued:          isRTL ? `فاتورة صادرة: ${payload.invoice_number as string ?? ''}` : `Invoice issued: ${payload.invoice_number as string ?? ''}`,
+      invoice_paid:            isRTL ? `تم دفع الفاتورة: ${payload.invoice_number as string ?? ''}` : `Invoice paid: ${payload.invoice_number as string ?? ''}`,
+      ai_summary_generated:    isRTL ? 'تم توليد ملخص الذكاء الاصطناعي'                : 'AI case summary generated',
+      witness_view:            isRTL ? 'تمت مشاهدة رابط الشاهد'                        : 'Witness link accessed',
     };
     return m[type] ?? type.replace(/_/g, ' ');
   };
 
   const bannerFlags: NDEFlag[] = openFlags.map((f) => ({
-    id: f.id, rule_id: f.rule_id as 1|2|3, severity: f.severity as NDEFlag['severity'],
+    id: f.id, rule_id: f.rule_id as 1|2|3|4|5|6|7, severity: f.severity as NDEFlag['severity'],
     triggered_at: f.triggered_at, resolved_at: f.resolved_at, action_taken: f.action_taken,
     case_id: id,
     payload: timelineEvents.find((e) => e.event_type === 'nde_flag' && (e.payload?.rule_id as number) === f.rule_id)?.payload ?? {},
@@ -298,7 +316,15 @@ export default async function CaseDetailPage({
               {openFlags.map((f) => (
                 <li key={f.id} className="flex items-center justify-between gap-2">
                   <p className="text-xs font-medium text-foreground">
-                    {{ 1: isRTL ? 'تقصير المحامي' : 'Inactivity', 2: isRTL ? 'موعد فائت' : 'Missed deadline', 3: isRTL ? 'صمت مطوّل' : 'Extended silence' }[f.rule_id] ?? `Rule ${f.rule_id}`}
+                    {({
+                      1: isRTL ? 'تقصير المحامي'       : 'Inactivity',
+                      2: isRTL ? 'موعد فائت'            : 'Missed deadline',
+                      3: isRTL ? 'صمت مطوّل'            : 'Extended silence',
+                      4: isRTL ? 'رسالة بدون ردّ'       : 'Chat non-response',
+                      5: isRTL ? 'طلب مستند مُهمَل'     : 'Document request ignored',
+                      6: isRTL ? 'اقتراب موعد الجلسة'  : 'Hearing proximity',
+                      7: isRTL ? 'خزنة الأدلة فارغة'   : 'Vault empty',
+                    } as Record<number, string>)[f.rule_id] ?? `Rule ${f.rule_id}`}
                   </p>
                   <span className={cn('rounded-full px-2 py-0.5 text-[10px] font-bold capitalize',
                     { critical: 'bg-red-100 text-red-700', high: 'bg-orange-100 text-orange-700',
@@ -423,6 +449,14 @@ export default async function CaseDetailPage({
           </Link>
         </div>
       </div>
+
+      {/* AI Case Summary — Premium feature */}
+      <AISummaryPanel
+        caseId={id}
+        locale={locale}
+        subscriptionTier={subscriptionTier}
+        cachedSummary={cachedSummary ?? null}
+      />
 
       {/* Legal disclaimer */}
       <p className="text-[10px] text-muted-foreground/50 text-center leading-relaxed max-w-lg mx-auto">

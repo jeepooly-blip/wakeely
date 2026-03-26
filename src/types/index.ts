@@ -190,7 +190,8 @@ export interface LawyerPerformanceScore {
 export type NotificationType =
   | 'nde_flag' | 'deadline_reminder' | 'lawyer_joined'
   | 'lawyer_action' | 'chat_message' | 'escalation_sent'
-  | 'subscription_updated' | 'system';
+  | 'subscription_updated' | 'system'
+  | 'invoice_issued' | 'invoice_paid' | 'invoice_overdue';
 
 export interface AppNotification {
   id:         string;

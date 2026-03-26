@@ -107,6 +107,8 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next|_vercel|api|.*\\.(?:ico|png|svg|jpg|jpeg|gif|webp|woff2?|ttf|otf|css|js)).*)',
+    // Exclude static assets, API routes, and public unauthenticated pages
+    // /witness/ and /share/ handle their own HTML — no locale needed
+    '/((?!_next|_vercel|api|witness|share|.*\\.(?:ico|png|svg|jpg|jpeg|gif|webp|woff2?|ttf|otf|css|js)).*)',
   ],
 };
