@@ -60,22 +60,24 @@ export async function POST(req: Request, { params }: Params) {
     payment_proof_path:  body.payment_proof_path ?? null,
   }).eq('id', id);
 
-  // Write timeline event
-  await sb.from('timeline_events').insert({
-    case_id:             invoice.case_id,
-    actor_id:            user.id,
-    event_type:          'invoice_paid',
-    payload: {
-      invoice_id:       id,
-      invoice_number:   invoice.invoice_number,
-      total_amount:     invoice.total_amount,
-      currency:         invoice.currency,
-      paid_by:          isClient ? 'client' : 'lawyer_confirmed',
-      payment_method:   body.payment_method ?? 'bank_transfer',
-      payment_reference: body.payment_reference,
-    },
-    is_system_generated: false,
-  }).catch(() => {});
+  // Write timeline event (non-blocking)
+  try {
+    await sb.from('timeline_events').insert({
+      case_id:             invoice.case_id,
+      actor_id:            user.id,
+      event_type:          'invoice_paid',
+      payload: {
+        invoice_id:        id,
+        invoice_number:    invoice.invoice_number,
+        total_amount:      invoice.total_amount,
+        currency:          invoice.currency,
+        paid_by:           isClient ? 'client' : 'lawyer_confirmed',
+        payment_method:    body.payment_method ?? 'bank_transfer',
+        payment_reference: body.payment_reference,
+      },
+      is_system_generated: false,
+    });
+  } catch { /* non-critical — don't block payment confirmation */ }
 
   // Notify the other party
   const lawyer = invoice.lawyer as unknown as { full_name: string; email: string; notification_in_app: boolean };

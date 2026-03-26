@@ -57,18 +57,20 @@ export async function POST(_req: Request, { params }: Params) {
 
   // Timeline event on the case
   const caseTitle = (invoice.cases as unknown as { title: string })?.title ?? '';
-  await sb.from('timeline_events').insert({
-    case_id:             invoice.invoice_number ? invoice.cases?.['id'] ?? null : null,
-    actor_id:            user.id,
-    event_type:          'invoice_issued',
-    payload: {
-      invoice_id:     id,
-      invoice_number: invoice.invoice_number,
-      total_amount:   invoice.total_amount,
-      currency:       invoice.currency,
-    },
-    is_system_generated: false,
-  }).then(() => {}).catch(() => {});  // non-blocking, case_id join handled separately
+  try {
+    await sb.from('timeline_events').insert({
+      case_id:             (invoice.cases as unknown as { id?: string } | null)?.id ?? null,
+      actor_id:            user.id,
+      event_type:          'invoice_issued',
+      payload: {
+        invoice_id:     id,
+        invoice_number: invoice.invoice_number,
+        total_amount:   invoice.total_amount,
+        currency:       invoice.currency,
+      },
+      is_system_generated: false,
+    });
+  } catch { /* non-critical */ }
 
   const client = invoice.client as unknown as {
     id: string; full_name: string; email: string; phone?: string;

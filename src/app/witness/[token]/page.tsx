@@ -63,19 +63,21 @@ export default async function WitnessPage({ params }: PageProps) {
     ?? headerStore.get('x-real-ip')
     ?? null;
 
-  await sb.from('audit_logs').insert({
-    user_id:     null,
-    action:      'witness_view',
-    resource:    'witness_links',
-    resource_id: link.id,
-    ip_address:  ip,
-    metadata: {
-      token,
-      case_id:    link.case_id,
-      view_count: link.view_count + 1,
-      label:      link.label,
-    },
-  }).catch(() => {});
+  try {
+    await sb.from('audit_logs').insert({
+      user_id:     null,
+      action:      'witness_view',
+      resource:    'witness_links',
+      resource_id: link.id,
+      ip_address:  ip,
+      metadata: {
+        token,
+        case_id:    link.case_id,
+        view_count: link.view_count + 1,
+        label:      link.label,
+      },
+    });
+  } catch { /* non-critical audit log */ }
 
   type CaseData = {
     id: string; title: string; case_type: string;

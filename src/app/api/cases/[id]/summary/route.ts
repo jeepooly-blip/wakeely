@@ -207,19 +207,14 @@ Generate the structured case summary.`;
 
   // ── Timeline event ────────────────────────────────────────────
   try {
-    await sb
-      .from('timeline_events')
-      .insert({
-        case_id:             caseId,
-        actor_id:            user.id,
-        event_type:          'ai_summary_generated',
-        payload:             { language: locale, summary_id: saved.id },
-        is_system_generated: true,
-      });
-  } catch (error) {
-    // Log but don't fail the request
-    console.error('[case-summary] Failed to insert timeline event:', error);
-  }
+    await sb.from('timeline_events').insert({
+      case_id:             caseId,
+      actor_id:            user.id,
+      event_type:          'ai_summary_generated',
+      payload:             { language: locale, summary_id: saved.id },
+      is_system_generated: true,
+    });
+  } catch { /* non-critical */ }
 
   return NextResponse.json(saved);
 }
