@@ -7,6 +7,7 @@ import { Plus, Calendar, List, RefreshCw } from 'lucide-react';
 import { CalendarView } from './calendar-view';
 import { DeadlineList, type DeadlineRowFull } from './deadline-list';
 import { AddDeadlineModal } from './add-deadline-modal';
+import { CalendarSyncButton } from './calendar-sync-button';
 
 interface Case { id: string; title: string }
 
@@ -111,6 +112,23 @@ export function DeadlineTracker({ initialDeadlines, cases }: DeadlineTrackerProp
           >
             <RefreshCw className={cn('h-4 w-4', refreshing && 'animate-spin')} />
           </button>
+
+          {/* Sync all pending deadlines to calendar — shown only when there are pending ones */}
+          {pending.length > 0 && pending[0] && (
+            <CalendarSyncButton
+              deadline={{
+                id:         pending[0].id,
+                title:      pending[0].title,
+                due_date:   pending[0].due_date,
+                type:       pending[0].type,
+                case_id:    pending[0].case_id,
+                case_title: pending[0].case_title,
+              }}
+              locale={locale}
+              variant="bulk"
+            />
+          )}
+
           <button
             type="button"
             onClick={handleAddNew}

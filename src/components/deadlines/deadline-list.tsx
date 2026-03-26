@@ -8,6 +8,8 @@ import {
   MoreVertical, Pencil, Trash2, Send, Clock,
   ChevronDown, Mail, MessageCircle,
 } from 'lucide-react';
+import { CalendarSyncButton } from '@/components/deadlines/calendar-sync-button';
+import type { CalendarDeadline } from '@/lib/calendar';
 
 export interface DeadlineRowFull {
   id:           string;
@@ -348,6 +350,24 @@ export function DeadlineList({ deadlines, filterDate, onEdit, onRefresh }: Deadl
                               ? (isRTL ? 'جارٍ الإرسال…' : 'Sending…')
                               : (isRTL ? 'إرسال تذكير' : 'Send reminder')}
                           </button>
+                        )}
+
+                        {/* Add to Calendar (pending only) */}
+                        {dl.status === 'pending' && (
+                          <div className="px-3 py-1.5">
+                            <CalendarSyncButton
+                              deadline={{
+                                id:         dl.id,
+                                title:      dl.title,
+                                due_date:   dl.due_date,
+                                type:       dl.type,
+                                case_id:    dl.case_id,
+                                case_title: dl.case_title,
+                              } satisfies CalendarDeadline}
+                              locale={locale}
+                              variant="row"
+                            />
+                          </div>
                         )}
 
                         {/* Complete / reopen */}
