@@ -55,7 +55,7 @@ export default async function AlertsPage({
 
   const flags = (flagsRaw ?? []).map((f) => ({
     id:           f.id,
-    rule_id:      f.rule_id as 1 | 2 | 3,
+    rule_id:      f.rule_id as 1 | 2 | 3 | 4 | 5 | 6 | 7,
     severity:     f.severity as 'low' | 'medium' | 'high' | 'critical',
     triggered_at: f.triggered_at,
     resolved_at:  f.resolved_at,

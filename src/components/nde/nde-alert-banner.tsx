@@ -11,7 +11,7 @@ import {
 
 export interface NDEFlag {
   id:           string;
-  rule_id:      1 | 2 | 3;
+  rule_id:      1 | 2 | 3 | 4 | 5 | 6 | 7;
   severity:     'low' | 'medium' | 'high' | 'critical';
   triggered_at: string;
   resolved_at:  string | null;
