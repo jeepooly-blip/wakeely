@@ -1,8 +1,10 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { Link } from '@/i18n/navigation';
-import { Lock, FileText, FolderOpen, Calendar, Hash, Scale } from 'lucide-react';
+import { Lock, FileText, FolderOpen, Calendar, Hash, Scale, HardDrive } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { checkStorageLimit } from '@/lib/feature-gate';
+import { VaultShareButton } from '@/components/vault/share-button';
 
 export default async function VaultPage({
   params,
@@ -15,6 +17,16 @@ export default async function VaultPage({
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect(`/${locale}/login`);
+
+  // Resolve tier & compute storage usage
+  const { data: profile } = await supabase
+    .from('users')
+    .select('subscription_tier')
+    .eq('id', user.id)
+    .maybeSingle();
+
+  const tier = profile?.subscription_tier ?? 'basic';
+  const storageCheck = await checkStorageLimit(user.id, tier, supabase);
 
   // Fetch all documents across user's cases
   const { data: cases } = await supabase
@@ -122,36 +134,95 @@ export default async function VaultPage({
 
           <div className="divide-y divide-border">
             {allDocs.map((doc) => (
-              <div key={doc.id} className="flex items-center gap-4 px-5 py-4 hover:bg-muted/30 transition">
-                <span className="text-2xl shrink-0">{getFileIcon(doc.mime_type ?? '')}</span>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-foreground truncate">{doc.file_name}</p>
-                  <div className="flex items-center gap-3 mt-0.5 text-[10px] text-muted-foreground flex-wrap">
-                    <span className="flex items-center gap-1">
-                      <FolderOpen className="h-3 w-3" />
-                      {caseMap[doc.case_id] ?? doc.case_id.slice(0, 8)}
-                    </span>
-                    <span className="flex items-center gap-1" dir="ltr">
-                      <Hash className="h-3 w-3" />
-                      {doc.file_hash?.slice(0, 12)}…
-                    </span>
-                    <span>v{doc.version}</span>
-                    <span>{fmtSize(doc.file_size ?? 0)}</span>
-                    <span className="flex items-center gap-1">
-                      <Calendar className="h-3 w-3" />
-                      {fmtDate(doc.created_at)}
-                    </span>
+                <div key={doc.id} className="flex items-center gap-4 px-5 py-4 hover:bg-muted/30 transition">
+                  <span className="text-2xl shrink-0">{getFileIcon(doc.mime_type ?? '')}</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-foreground truncate">{doc.file_name}</p>
+                    <div className="flex items-center gap-3 mt-0.5 text-[10px] text-muted-foreground flex-wrap">
+                      <span className="flex items-center gap-1">
+                        <FolderOpen className="h-3 w-3" />
+                        {caseMap[doc.case_id] ?? doc.case_id.slice(0, 8)}
+                      </span>
+                      <span className="flex items-center gap-1" dir="ltr">
+                        <Hash className="h-3 w-3" />
+                        {doc.file_hash?.slice(0, 12)}…
+                      </span>
+                      <span>v{doc.version}</span>
+                      <span>{fmtSize(doc.file_size ?? 0)}</span>
+                      <span className="flex items-center gap-1">
+                        <Calendar className="h-3 w-3" />
+                        {fmtDate(doc.created_at)}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <VaultShareButton
+                      documentId={doc.id}
+                      fileName={doc.file_name}
+                      locale={locale}
+                    />
+                    <Link href={`/cases/${doc.case_id}`}
+                      className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition">
+                      {isRTL ? 'القضية' : 'Case'}
+                    </Link>
                   </div>
                 </div>
-                <Link href={`/cases/${doc.case_id}`}
-                  className="shrink-0 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition">
-                  {isRTL ? 'القضية' : 'Case'}
-                </Link>
-              </div>
             ))}
           </div>
         </div>
       )}
+
+      {/* Storage usage bar */}
+      <div className="rounded-2xl border border-border bg-card p-5">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <HardDrive className="h-4 w-4 text-[#1A3557]" />
+            <span className="text-sm font-semibold text-foreground">
+              {isRTL ? 'استخدام التخزين' : 'Storage Usage'}
+            </span>
+          </div>
+          <span className={cn(
+            'text-xs font-bold rounded-full px-2.5 py-0.5',
+            storageCheck.percentage >= 90
+              ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+              : storageCheck.percentage >= 70
+              ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+              : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+          )}>
+            {storageCheck.percentage}%
+          </span>
+        </div>
+
+        {/* Progress bar */}
+        <div className="w-full h-2.5 rounded-full bg-muted overflow-hidden mb-2">
+          <div
+            className={cn(
+              'h-full rounded-full transition-all duration-500',
+              storageCheck.percentage >= 90 ? 'bg-red-500'
+              : storageCheck.percentage >= 70 ? 'bg-amber-500'
+              : 'bg-[#1A3557]'
+            )}
+            style={{ width: `${storageCheck.percentage}%` }}
+          />
+        </div>
+
+        <div className="flex items-center justify-between text-xs text-muted-foreground" dir="ltr">
+          <span>{fmtSize(storageCheck.bytes_used)} {isRTL ? 'مستخدم' : 'used'}</span>
+          <span>
+            {isRTL ? 'الحد' : 'Limit'}: {storageCheck.bytes_limit / 1_073_741_824} GB
+            {' '}·{' '}
+            <span className="capitalize">{storageCheck.tier}</span>
+          </span>
+        </div>
+
+        {storageCheck.percentage >= 90 && (
+          <p className="mt-2 text-xs text-red-600 dark:text-red-400 font-medium">
+            {isRTL
+              ? '⚠️ تقترب من حد التخزين. يُرجى ترقية خطتك لإضافة مزيد من المستندات.'
+              : '⚠️ You are nearly at your storage limit. Upgrade your plan to add more documents.'}
+          </p>
+        )}
+      </div>
 
       {/* Security note */}
       <div className="rounded-2xl border border-[#1A3557]/20 bg-[#1A3557]/5 dark:bg-[#1A3557]/10 px-5 py-4">
