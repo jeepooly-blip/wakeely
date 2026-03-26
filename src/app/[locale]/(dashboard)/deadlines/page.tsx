@@ -14,13 +14,15 @@ export default async function DeadlinesPage({
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect(`/${locale}/login`);
 
-  // ── Fetch user's active cases ──────────────────────────────
-  const { data: casesRaw } = await supabase
-    .from('cases')
-    .select('id, title')
-    .eq('client_id', user.id)
-    .eq('status', 'active')
-    .order('created_at', { ascending: false });
+  // Fetch user's active cases + hijri preference in parallel
+  const [{ data: casesRaw }, { data: profileRow }] = await Promise.all([
+    supabase.from('cases').select('id, title')
+      .eq('client_id', user.id).eq('status', 'active')
+      .order('created_at', { ascending: false }),
+    supabase.from('users').select('hijri_calendar').eq('id', user.id).maybeSingle(),
+  ]);
+
+  const hijriCalendar = profileRow?.hijri_calendar ?? false;
 
   const cases = (casesRaw ?? []).map((c) => ({ id: c.id, title: c.title }));
   const caseIds = cases.map((c) => c.id);
@@ -52,6 +54,7 @@ export default async function DeadlinesPage({
     <DeadlineTracker
       initialDeadlines={deadlines}
       cases={cases}
+      hijriCalendar={hijriCalendar}
     />
   );
 }

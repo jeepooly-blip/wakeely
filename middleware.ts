@@ -2,6 +2,7 @@ import createIntlMiddleware from 'next-intl/middleware';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { type NextRequest, NextResponse } from 'next/server';
 import { routing } from './src/i18n/routing';
+import { checkRateLimit, rateLimitResponse, RATE_LIMITS } from './src/lib/rate-limit';
 
 const intlMiddleware = createIntlMiddleware(routing);
 
@@ -12,6 +13,22 @@ const PROTECTED_PATHS = [
 ];
 
 export async function middleware(request: NextRequest) {
+  const pathname = request.nextUrl.pathname;
+  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+    ?? request.headers.get('x-real-ip')
+    ?? 'unknown';
+
+  // ── Rate limiting (Upstash in prod, in-memory fallback in dev) ──
+  // Auth routes: 5 req/min — protect against brute-force
+  if (pathname.includes('/api/auth/') || pathname.includes('/api/invites/')) {
+    const rl = await checkRateLimit(`auth:${ip}`, RATE_LIMITS.auth);
+    if (!rl.allowed) return rateLimitResponse(rl.resetAfterMs);
+  }
+  // AI/voice routes: 10 req/min — cost control
+  if (pathname.includes('/api/ai/') || pathname.includes('/api/voice/') || pathname.includes('/api/onboarding/chat')) {
+    const rl = await checkRateLimit(`ai:${ip}`, RATE_LIMITS.ai);
+    if (!rl.allowed) return rateLimitResponse(rl.resetAfterMs);
+  }
 
   // ── STEP 1: Kill the stale NEXT_LOCALE cookie on the REQUEST
   // before next-intl ever reads it. This is the root cause of

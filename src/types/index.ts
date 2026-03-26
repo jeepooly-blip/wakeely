@@ -20,6 +20,7 @@ export interface WakeelaUser {
   timezone: string;
   data_region: DataRegion;
   subscription_tier: SubscriptionTier;
+  hijri_calendar: boolean;   // PRD §7.1 — show Hijri dates alongside Gregorian
   avatar_url?: string;
   created_at: string;
 }
@@ -133,6 +134,7 @@ export type ActionType =
   | 'research'
   | 'negotiation'
   | 'correspondence'
+  | 'document_request'   // PRD Rule 5: lawyer requests a document from client
   | 'other';
 
 export interface LawyerInvite {
@@ -244,32 +246,37 @@ export interface EscalationDraft {
 }
 
 // ── Subscription feature gates ─────────────────────────────────
+// PRD v1.1: Basic tier upgraded to 3 active cases + 1 GB storage
+// (previously 1 case + 500 MB — corrected here per gap analysis Task 1)
 export const TIER_GATES = {
   basic: {
-    max_cases:         1,
+    max_cases:         3,          // PRD v1.1: was 1, now 3
     max_docs:          5,
+    storage_gb:        1,          // 1 GB storage cap
     whatsapp:          false,
     escalation:        false,
     lawyer_invite:     false,
     chat:              false,
     vault:             false,
     voice_queries_day: 5,
-    voice_tts:         false,   // browser TTS only
+    voice_tts:         false,      // browser TTS only
   },
   pro: {
     max_cases:         10,
     max_docs:          50,
+    storage_gb:        10,         // 10 GB storage cap
     whatsapp:          true,
     escalation:        true,
     lawyer_invite:     true,
     chat:              true,
     vault:             true,
     voice_queries_day: 50,
-    voice_tts:         true,    // high-quality TTS
+    voice_tts:         true,       // high-quality TTS
   },
   premium: {
     max_cases:         Infinity,
     max_docs:          Infinity,
+    storage_gb:        30,         // 30 GB storage cap
     whatsapp:          true,
     escalation:        true,
     lawyer_invite:     true,
@@ -279,7 +286,7 @@ export const TIER_GATES = {
     voice_tts:         true,
   },
 } as const satisfies Record<SubscriptionTier, {
-  max_cases: number; max_docs: number; whatsapp: boolean;
+  max_cases: number; max_docs: number; storage_gb: number; whatsapp: boolean;
   escalation: boolean; lawyer_invite: boolean; chat: boolean; vault: boolean;
   voice_queries_day: number; voice_tts: boolean;
 }>;

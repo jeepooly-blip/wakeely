@@ -7,7 +7,7 @@ import { safeInt } from '@/lib/sanitize';
 
 export async function GET(req: Request) {
   const ip = getClientIp(req);
-  const rl = checkRateLimit(`admin:${ip}`, { limit: 30, windowMs: 60_000 });
+  const rl = await checkRateLimit(`admin:${ip}`, { limit: 30, windowMs: 60_000 });
   if (!rl.allowed) return rateLimitResponse(rl.resetAfterMs);
 
   const guard = await requireAdminApi();
@@ -38,7 +38,7 @@ export async function GET(req: Request) {
 
 export async function PATCH(req: Request) {
   const ip = getClientIp(req);
-  const rl = checkRateLimit(`admin:${ip}`, { limit: 10, windowMs: 60_000 });
+  const rl = await checkRateLimit(`admin:${ip}`, { limit: 10, windowMs: 60_000 });
   if (!rl.allowed) return rateLimitResponse(rl.resetAfterMs);
 
   const guard = await requireAdminApi();

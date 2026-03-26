@@ -14,9 +14,10 @@ interface Case { id: string; title: string }
 interface DeadlineTrackerProps {
   initialDeadlines: DeadlineRowFull[];
   cases:            Case[];
+  hijriCalendar?:   boolean;
 }
 
-export function DeadlineTracker({ initialDeadlines, cases }: DeadlineTrackerProps) {
+export function DeadlineTracker({ initialDeadlines, cases, hijriCalendar = false }: DeadlineTrackerProps) {
   const locale  = useLocale();
   const t       = useTranslations('tracker');
   const isRTL   = locale === 'ar';
@@ -245,6 +246,7 @@ export function DeadlineTracker({ initialDeadlines, cases }: DeadlineTrackerProp
         filterDate={selectedDate || undefined}
         onEdit={handleEdit}
         onRefresh={refresh}
+        hijriCalendar={hijriCalendar}
       />
 
       {/* Add/Edit Modal */}

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
+import { formatDateSmart } from '@/lib/utils';
 import {
   Calendar, CheckCircle2, Circle, AlertTriangle,
   MoreVertical, Pencil, Trash2, Send, Clock,
@@ -27,11 +28,12 @@ interface DeadlineListProps {
   filterDate?:     string;
   onEdit:          (dl: DeadlineRowFull) => void;
   onRefresh:       () => void;
+  hijriCalendar?:  boolean;
 }
 
 type StatusFilter = 'all' | 'pending' | 'completed' | 'missed';
 
-export function DeadlineList({ deadlines, filterDate, onEdit, onRefresh }: DeadlineListProps) {
+export function DeadlineList({ deadlines, filterDate, onEdit, onRefresh, hijriCalendar = false }: DeadlineListProps) {
   const locale  = useLocale();
   const t       = useTranslations('tracker');
   const isRTL   = locale === 'ar';
@@ -52,10 +54,8 @@ export function DeadlineList({ deadlines, filterDate, onEdit, onRefresh }: Deadl
     return Math.ceil((d.getTime() - today.getTime()) / 86_400_000);
   };
 
-  const fmtDate = (ds: string) =>
-    new Date(ds).toLocaleDateString(isRTL ? 'ar-AE' : 'en-AE', {
-      weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
-    });
+  const fmtDate = (ds: string, isCourt = false) =>
+    formatDateSmart(ds, locale, hijriCalendar, isCourt);
 
   // Apply filters
   let filtered = deadlines;
@@ -271,7 +271,7 @@ export function DeadlineList({ deadlines, filterDate, onEdit, onRefresh }: Deadl
                     </span>
                     <span className="flex items-center gap-1">
                       <Calendar className="h-3 w-3" />
-                      {fmtDate(dl.due_date)}
+                      {fmtDate(dl.due_date, dl.type === 'court')}
                     </span>
                     <span className="truncate max-w-[150px]">
                       {dl.case_title}

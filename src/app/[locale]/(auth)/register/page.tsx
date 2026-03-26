@@ -7,7 +7,7 @@ import { RegionSelector } from '@/components/region-selector';
 import { createClient } from '@/lib/supabase/client';
 import type { DataRegion } from '@/types';
 import { cn } from '@/lib/utils';
-import { CheckCircle2, User, Briefcase, Eye, EyeOff, Shield } from 'lucide-react';
+import { CheckCircle2, User, Briefcase, Eye, EyeOff, Shield, Smartphone, Loader2 } from 'lucide-react';
 
 type Step = 1 | 2 | 3 | 4;
 type Role = 'client' | 'lawyer';
@@ -34,6 +34,8 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState('');
   const [showPwd, setShowPwd] = useState(false);
+  const [otpCode, setOtpCode] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
 
   const [form, setForm] = useState<FormState>({
     role:     '',
@@ -76,7 +78,7 @@ export default function RegisterPage() {
     setStep(2);
   };
 
-  // ── Step 2 → 3 (create account) ───────────────────────────
+  // ── Step 2 → 3 (create account, optionally send phone OTP) ───
   const handleSignUp = async () => {
     if (!step2Valid) return;
     if (!tAuth) return;
@@ -110,10 +112,23 @@ export default function RegisterPage() {
         });
       }
 
-      setStep(4);
+      // If phone provided, send OTP and go to verification step
+      const phone = form.phone.trim();
+      if (phone) {
+        const { error: otpError } = await supabase.auth.signInWithOtp({ phone });
+        if (otpError) {
+          // OTP send failed — not a blocker, just skip to success
+          console.warn('[OTP] Send failed:', otpError.message);
+          setStep(4);
+        } else {
+          setOtpSent(true);
+          setStep(3);
+        }
+      } else {
+        setStep(4);
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Registration failed';
-      // Make error messages friendlier
       if (msg.includes('already registered')) {
         setError(isRTL ? 'هذا البريد مسجّل بالفعل. سجّل دخولك.' : 'This email is already registered. Please log in.');
       } else if (msg.includes('Password')) {
@@ -123,6 +138,52 @@ export default function RegisterPage() {
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  // ── Step 3: Verify phone OTP ───────────────────────────────
+  const handleVerifyOTP = async () => {
+    if (otpCode.length < 4) return;
+    setLoading(true);
+    setError('');
+    try {
+      const { error: verifyError } = await supabase.auth.verifyOtp({
+        phone: form.phone.trim(),
+        token: otpCode.trim(),
+        type:  'sms',
+      });
+      if (verifyError) throw verifyError;
+
+      // Update users table with verified phone
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase.from('users')
+          .update({ phone: form.phone.trim() })
+          .eq('id', user.id);
+      }
+
+      setStep(4);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Verification failed';
+      setError(
+        msg.includes('Invalid') || msg.includes('expired')
+          ? (isRTL ? 'الرمز غير صحيح أو انتهت صلاحيته. أعد المحاولة.' : 'Invalid or expired code. Please try again.')
+          : msg
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Resend OTP
+  const handleResendOTP = async () => {
+    setError('');
+    const { error: resendError } = await supabase.auth.signInWithOtp({
+      phone: form.phone.trim(),
+    });
+    if (!resendError) {
+      setOtpCode('');
+      setOtpSent(true);
     }
   };
 
@@ -444,12 +505,85 @@ export default function RegisterPage() {
         </div>
       )}
 
-      {/* ── STEP 3: Loading state (brief) ────────────────── */}
+      {/* ── STEP 3: Phone OTP verification ───────────────── */}
       {step === 3 && (
-        <div className="flex flex-col items-center justify-center py-16 animate-fade-in">
-          <div className="h-10 w-10 rounded-full border-4 border-[#1A3557] border-t-transparent animate-spin mb-4" />
-          <p className="text-sm text-muted-foreground">
-            {isRTL ? 'جارٍ إنشاء حسابك…' : 'Creating your account…'}
+        <div className="space-y-5 animate-fade-in">
+          {/* Icon + heading */}
+          <div className="flex flex-col items-center gap-3 text-center pb-2">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#1A3557]/10">
+              <Smartphone className="h-7 w-7 text-[#1A3557]" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-foreground">
+                {isRTL ? 'تحقق من رقم جوالك' : 'Verify your phone'}
+              </h2>
+              <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
+                {isRTL
+                  ? `أرسلنا رمز مكوّن من 6 أرقام إلى ${form.phone}`
+                  : `We sent a 6-digit code to ${form.phone}`}
+              </p>
+            </div>
+          </div>
+
+          {/* OTP input */}
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1.5">
+              {isRTL ? 'رمز التحقق' : 'Verification code'}
+            </label>
+            <input
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              maxLength={6}
+              placeholder="000000"
+              value={otpCode}
+              onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              dir="ltr"
+              className="w-full rounded-xl border border-input bg-background px-4 py-3.5 text-center text-2xl font-bold tracking-[0.5em] placeholder:text-muted-foreground/30 focus:outline-none focus:ring-2 focus:ring-[#1A3557]/40 transition"
+              autoFocus
+            />
+          </div>
+
+          {/* Verify button */}
+          <button
+            type="button"
+            onClick={handleVerifyOTP}
+            disabled={otpCode.length < 4 || loading}
+            className={cn(
+              'w-full flex items-center justify-center gap-2 rounded-xl py-3.5 font-semibold text-white transition-all',
+              otpCode.length >= 4 && !loading
+                ? 'bg-[#1A3557] hover:bg-[#1e4a7a] shadow-sm'
+                : 'bg-[#1A3557]/30 cursor-not-allowed'
+            )}
+          >
+            {loading
+              ? <><Loader2 className="h-4 w-4 animate-spin" />{isRTL ? 'جارٍ التحقق…' : 'Verifying…'}</>
+              : (isRTL ? 'تأكيد الرمز' : 'Verify Code')}
+          </button>
+
+          {/* Resend + skip */}
+          <div className="flex flex-col items-center gap-2">
+            <button
+              type="button"
+              onClick={handleResendOTP}
+              className="text-sm text-[#1A3557] hover:underline font-medium"
+            >
+              {isRTL ? 'إعادة إرسال الرمز' : 'Resend code'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setStep(4)}
+              className="text-xs text-muted-foreground hover:text-foreground transition"
+            >
+              {isRTL ? 'تخطي لاحقاً' : 'Skip for now'}
+            </button>
+          </div>
+
+          {/* Info note */}
+          <p className="text-[11px] text-muted-foreground/60 text-center leading-relaxed">
+            {isRTL
+              ? 'رقم جوالك يُستخدم لإشعارات واتساب فقط. يمكنك إضافته لاحقاً من الإعدادات.'
+              : 'Your phone number is used for WhatsApp alerts only. You can add it later in Settings.'}
           </p>
         </div>
       )}

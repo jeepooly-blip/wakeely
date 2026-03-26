@@ -11,6 +11,7 @@ interface Profile {
   locale: string; timezone: string; data_region: string;
   notification_email: boolean; notification_whatsapp: boolean; notification_in_app: boolean;
   quiet_hours_start?: string; quiet_hours_end?: string; subscription_tier: string;
+  hijri_calendar?: boolean;
 }
 
 interface SettingsFormProps {
@@ -30,6 +31,7 @@ export function SettingsForm({ profile, locale }: SettingsFormProps) {
   const [notifInApp,    setNotifInApp]    = useState(profile?.notification_in_app ?? true);
   const [quietStart,    setQuietStart]    = useState(profile?.quiet_hours_start ?? '22:00');
   const [quietEnd,      setQuietEnd]      = useState(profile?.quiet_hours_end ?? '07:00');
+  const [hijriCal,      setHijriCal]      = useState(profile?.hijri_calendar ?? false);
   const [saving,        setSaving]        = useState(false);
   const [saved,         setSaved]         = useState(false);
   const [error,         setError]         = useState('');
@@ -45,6 +47,7 @@ export function SettingsForm({ profile, locale }: SettingsFormProps) {
         notification_in_app:    notifInApp,
         quiet_hours_start:      quietStart,
         quiet_hours_end:        quietEnd,
+        hijri_calendar:         hijriCal,
       }).eq('id', profile?.id ?? '');
       if (err) throw err;
       setSaved(true);
@@ -165,6 +168,26 @@ export function SettingsForm({ profile, locale }: SettingsFormProps) {
               className="rounded-xl border border-border bg-background px-3 py-2 text-sm focus:outline-none" />
           </div>
         </div>
+      </div>
+
+      {/* Date Preferences */}
+      <div className="rounded-2xl border border-border bg-card p-5 space-y-1">
+        <h2 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-2">
+          <Globe className="h-4 w-4 text-[#1A3557]" />
+          {isRTL ? 'تفضيلات التاريخ' : 'Date Preferences'}
+        </h2>
+        <Toggle
+          checked={hijriCal}
+          onChange={setHijriCal}
+          label={isRTL ? 'عرض التاريخ الهجري (إلى جانب الميلادي)' : 'Show Hijri dates (alongside Gregorian)'}
+        />
+        {hijriCal && (
+          <p className="text-[11px] text-muted-foreground leading-relaxed pt-1 pb-0.5 ps-1">
+            {isRTL
+              ? 'مواعيد المحاكم تُعرض دائماً بالتاريخ الميلادي بين قوسين للدقة القانونية.'
+              : 'Court dates always include the Gregorian date in parentheses for legal accuracy.'}
+          </p>
+        )}
       </div>
 
       {/* Error / Save */}
