@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { createClient } from '@/lib/supabase/client';
-import type { User } from '@supabase/supabase-js';
+import { createClient }    from '@/lib/supabase/client';
+import { identifyUser, resetAnalytics } from '@/components/analytics-provider';
+import type { User }       from '@supabase/supabase-js';
 import type { WakeelaUser } from '@/types';
 
 interface UseUserReturn {
@@ -25,7 +26,17 @@ export function useUser(): UseUserReturn {
       .select('*')
       .eq('id', userId)
       .maybeSingle();
-    if (data) setProfile(data as WakeelaUser);
+    if (data) {
+      setProfile(data as WakeelaUser);
+      // Identify user in PostHog after profile loads
+      identifyUser({
+        userId:      userId,
+        role:        data.role,
+        tier:        data.subscription_tier,
+        locale:      data.locale,
+        data_region: data.data_region,
+      });
+    }
   }, [supabase]);
 
   const refreshProfile = useCallback(async () => {
@@ -61,6 +72,7 @@ export function useUser(): UseUserReturn {
     await supabase.auth.signOut();
     setUser(null);
     setProfile(null);
+    resetAnalytics();
   }, [supabase]);
 
   return { user, profile, loading, signOut, refreshProfile };

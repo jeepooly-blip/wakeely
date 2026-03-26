@@ -16,11 +16,12 @@ import type { ChatMessage, ChatParticipant, VaultDocument } from '@/types';
    Props
 ───────────────────────────────────────────────────────────────── */
 interface SecureChatProps {
-  caseId:    string;
-  caseTitle: string;
-  userId:    string;
-  userRole:  'client' | 'lawyer' | 'admin';
-  locale:    string;
+  caseId:             string;
+  caseTitle:          string;
+  userId:             string;
+  userRole:           'client' | 'lawyer' | 'admin';
+  locale:             string;
+  subscriptionTier?:  string;  // for export gating
 }
 
 /* ─────────────────────────────────────────────────────────────────
@@ -240,9 +241,10 @@ function VaultPicker({
 /* ─────────────────────────────────────────────────────────────────
    Main Component
 ───────────────────────────────────────────────────────────────── */
-export function SecureChat({ caseId, caseTitle, userId, userRole, locale }: SecureChatProps) {
+export function SecureChat({ caseId, caseTitle, userId, userRole, locale, subscriptionTier = 'basic' }: SecureChatProps) {
   const isRTL    = locale === 'ar';
   const supabase = createClient();
+  const canExportTranscript = userRole === 'lawyer' || userRole === 'admin' || ['pro','premium'].includes(subscriptionTier);
 
   const [messages,      setMessages]      = useState<ChatMessage[]>([]);
   const [participants,  setParticipants]  = useState<ChatParticipant[]>([]);
@@ -477,6 +479,7 @@ ${msgs}
               <Shield className="h-3 w-3" />
               {isRTL ? 'E2E مشفّر' : 'E2E Ready'}
             </span>
+            {/* Client-side print export (always available) */}
             <button
               onClick={exportPDF}
               title={isRTL ? 'تصدير PDF' : 'Export PDF'}
@@ -484,6 +487,18 @@ ${msgs}
             >
               <Download className="h-3.5 w-3.5" />
             </button>
+            {/* Server-side full transcript (Pro/Premium + lawyers) */}
+            {canExportTranscript && (
+              <a
+                href={`/api/cases/${caseId}/chat/export?locale=${locale}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                title={isRTL ? 'تصدير نسخة كاملة PDF' : 'Export full transcript PDF'}
+                className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/10 hover:bg-white/20 transition text-white"
+              >
+                <FileText className="h-3.5 w-3.5" />
+              </a>
+            )}
             <button
               onClick={() => setShowInfo((v) => !v)}
               className={cn(

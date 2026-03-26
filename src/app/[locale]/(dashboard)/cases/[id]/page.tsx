@@ -4,15 +4,16 @@ import { createClient } from '@/lib/supabase/server';
 import { Link } from '@/i18n/navigation';
 import { NDEAlertBanner, type NDEFlag } from '@/components/nde/nde-alert-banner';
 import { LawyerAccessPanel } from '@/components/lawyer/lawyer-access-panel';
-import { InviteButton } from '@/components/cases/invite-button';
-import { LawyerScorePanel } from '@/components/scores/lawyer-score-panel';
-import { CaseHealthCard } from '@/components/scores/case-health-card';
-import { HealthBadge } from '@/components/scores/health-badge';
+import { InviteButton }       from '@/components/cases/invite-button';
+import { LawyerScorePanel }   from '@/components/scores/lawyer-score-panel';
+import { CaseHealthCard }     from '@/components/scores/case-health-card';
+import { HealthBadge }        from '@/components/scores/health-badge';
+import { AISummaryPanel }     from '@/components/cases/ai-summary-panel';
 import { cn } from '@/lib/utils';
 import {
   ArrowLeft, ArrowRight, Scale, Calendar, FileText,
   CheckCircle2, Clock, Hash, Plus, AlertTriangle,
-  Layers, BarChart2, MessageCircle,
+  Layers, BarChart2, MessageCircle, Download,
 } from 'lucide-react';
 
 // HealthBar replaced by HealthBadge + CaseHealthCard components
@@ -30,6 +31,14 @@ export default async function CaseDetailPage({
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect(`/${locale}/login`);
+
+  // Fetch subscription tier + cached AI summary in parallel
+  const [{ data: profileRow }, { data: cachedSummary }] = await Promise.all([
+    supabase.from('users').select('subscription_tier').eq('id', user.id).maybeSingle(),
+    supabase.from('case_summaries').select('id, case_id, generated_at, language, summary_json')
+      .eq('case_id', id).maybeSingle(),
+  ]);
+  const subscriptionTier = profileRow?.subscription_tier ?? 'basic';
 
   const { data: c } = await supabase
     .from('cases')
@@ -363,6 +372,17 @@ export default async function CaseDetailPage({
             {isRTL ? 'الجدول الزمني' : 'Case Timeline'}
             <span className="badge badge-neutral">{timelineEvents.length}</span>
           </h3>
+          {timelineEvents.length > 0 && (
+            <a
+              href={`/api/cases/${id}/timeline/export?locale=${locale}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 rounded-lg border border-[#1A3557]/20 bg-[#1A3557]/5 px-3 py-1.5 text-xs font-semibold text-[#1A3557] hover:bg-[#1A3557]/10 transition"
+            >
+              <Download className="h-3.5 w-3.5" />
+              {isRTL ? 'تصدير PDF' : 'Export PDF'}
+            </a>
+          )}
         </div>
 
         {timelineEvents.length === 0 ? (
@@ -412,6 +432,14 @@ export default async function CaseDetailPage({
           </Link>
         </div>
       </div>
+
+      {/* AI Case Summary — Premium feature */}
+      <AISummaryPanel
+        caseId={id}
+        locale={locale}
+        subscriptionTier={subscriptionTier}
+        cachedSummary={cachedSummary ?? null}
+      />
 
       {/* Legal disclaimer */}
       <p className="text-[10px] text-muted-foreground/50 text-center leading-relaxed max-w-lg mx-auto">

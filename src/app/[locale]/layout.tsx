@@ -4,8 +4,9 @@ import { NextIntlClientProvider } from 'next-intl';
 import { getMessages, getTranslations } from 'next-intl/server';
 import { Inter, IBM_Plex_Sans_Arabic } from 'next/font/google';
 import { routing } from '@/i18n/routing';
-import { ThemeProvider } from '@/components/theme-provider';
-import { RTLProvider } from '@/components/rtl-provider';
+import { ThemeProvider }     from '@/components/theme-provider';
+import { RTLProvider }       from '@/components/rtl-provider';
+import { AnalyticsProvider } from '@/components/analytics-provider';
 import '../globals.css';
 
 const inter = Inter({
@@ -82,7 +83,11 @@ export default async function LocaleLayout({
       <body className={isRTL ? 'font-arabic' : 'font-sans'}>
         <ThemeProvider>
           <NextIntlClientProvider messages={messages} locale={locale}>
-            <RTLProvider>{children}</RTLProvider>
+            <RTLProvider>
+              <AnalyticsProvider>
+                {children}
+              </AnalyticsProvider>
+            </RTLProvider>
           </NextIntlClientProvider>
         </ThemeProvider>
       </body>

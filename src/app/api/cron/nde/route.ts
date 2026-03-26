@@ -88,6 +88,34 @@ export async function GET(request: Request) {
       errors.push(`rule2: ${String(e)}`);
     }
 
+    // ── Rule 4: Chat Non-Response (48 h) ─────────────────────────
+    try {
+      await processRule4(sb, cases as CaseRow[], now, results);
+    } catch (e) {
+      errors.push(`rule4: ${String(e)}`);
+    }
+
+    // ── Rule 5: Document Request Ignored (5 days) ─────────────────
+    try {
+      await processRule5(sb, cases as CaseRow[], now, results);
+    } catch (e) {
+      errors.push(`rule5: ${String(e)}`);
+    }
+
+    // ── Rule 6: Hearing Proximity Alert (≤3 days) ─────────────────
+    try {
+      await processRule6(sb, cases as CaseRow[], now, results);
+    } catch (e) {
+      errors.push(`rule6: ${String(e)}`);
+    }
+
+    // ── Rule 7: Vault Empty Warning (7+ days old, no docs) ────────
+    try {
+      await processRule7(sb, cases as CaseRow[], now, results);
+    } catch (e) {
+      errors.push(`rule7: ${String(e)}`);
+    }
+
     // ── Recalculate health scores for all flagged cases ───────────
     const flaggedCaseIds = [...new Set(results.map((r) => r.case_id))];
     for (const caseId of flaggedCaseIds) {
@@ -314,11 +342,11 @@ async function sendFlagNotification(sb: Supabase, flag: FlagResult, now: Date) {
 
   const { data: user } = await sb
     .from('users')
-    .select('email, locale, notification_email, quiet_hours_start, quiet_hours_end')
+    .select('email, phone, locale, notification_email, notification_whatsapp, quiet_hours_start, quiet_hours_end')
     .eq('id', caseRow.client_id)
     .maybeSingle();
 
-  if (!user?.notification_email || !user?.email) return;
+  if (!user?.email) return;
 
   // Quiet hours check
   const [qhS] = (user.quiet_hours_start ?? '22:00').split(':').map(Number);
@@ -342,24 +370,68 @@ async function sendFlagNotification(sb: Supabase, flag: FlagResult, now: Date) {
       en: `URGENT: Extended silence on "${caseRow.title}" — Wakeela`,
       ar: `عاجل: صمت مطوّل في "${caseRow.title}" — وكيلا`,
     },
+    4: {
+      en: `Your lawyer hasn't replied to your message — "${caseRow.title}" — Wakeela`,
+      ar: `محاميك لم يردّ على رسالتك في "${caseRow.title}" — وكيلا`,
+    },
+    5: {
+      en: `Document request unanswered (5 days) — "${caseRow.title}" — Wakeela`,
+      ar: `طلب المستند لم يُنفَّذ منذ 5 أيام في "${caseRow.title}" — وكيلا`,
+    },
+    6: {
+      en: `⚠️ URGENT: Hearing in ≤3 days, no lawyer activity — "${caseRow.title}" — Wakeela`,
+      ar: `⚠️ عاجل: جلسة خلال 3 أيام ولا يوجد نشاط للمحامي في "${caseRow.title}" — وكيلا`,
+    },
+    7: {
+      en: `Reminder: Your evidence vault is empty — "${caseRow.title}" — Wakeela`,
+      ar: `تذكير: خزنة الأدلة فارغة في "${caseRow.title}" — وكيلا`,
+    },
   };
 
   const subject = subjects[flag.rule_id]?.[isAr ? 'ar' : 'en'] ?? 'Wakeela Alert';
   const appUrl  = process.env.NEXT_PUBLIC_APP_URL ?? 'https://wakeela.com';
 
-  await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: {
-      Authorization:  `Bearer ${process.env.RESEND_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      from:    process.env.RESEND_FROM_EMAIL ?? 'noreply@wakeela.com',
-      to:      [user.email],
-      subject,
-      html:    buildAlertEmail(flag, caseRow.title, isAr, appUrl),
-    }),
-  });
+  // ── Email ─────────────────────────────────────────────────────
+  if (user.notification_email !== false) {
+    await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        Authorization:  `Bearer ${process.env.RESEND_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from:    process.env.RESEND_FROM_EMAIL ?? 'noreply@wakeela.com',
+        to:      [user.email],
+        subject,
+        html:    buildAlertEmail(flag, caseRow.title, isAr, appUrl),
+      }),
+    }).catch(() => {});
+  }
+
+  // ── WhatsApp + SMS fallback — Rule 6 only (hearing proximity = urgent push) ──
+  const waToken   = process.env.WHATSAPP_ACCESS_TOKEN;
+  const waPhoneId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+
+  if (
+    flag.rule_id === 6 &&
+    user.phone
+  ) {
+    const waBody = isAr
+      ? `⚠️ وكيلا: جلستك القضائية في "${caseRow.title}" خلال 3 أيام أو أقل. لم يُسجَّل أي نشاط من محاميك في الـ 48 ساعة الماضية. سجّل دخولك لاتخاذ إجراء.`
+      : `⚠️ Wakeela: Your court hearing for "${caseRow.title}" is in 3 days or less. No lawyer activity has been recorded in the past 48 hours. Log in to take action.`;
+
+    const smsBody = isAr
+      ? `وكيلا: جلستك في "${caseRow.title.slice(0, 30)}" خلال 3 أيام. لا يوجد نشاط من محاميك. سجّل دخولك الآن.`
+      : `Wakeela: Court hearing for "${caseRow.title.slice(0, 30)}" in 3 days. No lawyer activity recorded. Log in now.`;
+
+    const { sendWhatsAppWithSMSFallback } = await import('@/lib/notify');
+    await sendWhatsAppWithSMSFallback({
+      phone:                user.phone,
+      message:              waBody,
+      smsMessage:           smsBody,
+      notification_whatsapp: user.notification_whatsapp !== false,
+    }).catch(() => {});
+  }
 }
 
 function buildAlertEmail(
@@ -374,9 +446,13 @@ function buildAlertEmail(
               : '#f59e0b';
 
   const ruleNames: Record<number, Record<string, string>> = {
-    1: { en: 'Lawyer Inactivity',  ar: 'تقصير المحامي'  },
-    2: { en: 'Missed Deadline',    ar: 'موعد قضائي فائت' },
-    3: { en: 'Extended Silence',   ar: 'صمت مطوّل'      },
+    1: { en: 'Lawyer Inactivity',          ar: 'تقصير المحامي'            },
+    2: { en: 'Missed Deadline',            ar: 'موعد قضائي فائت'          },
+    3: { en: 'Extended Silence',           ar: 'صمت مطوّل'               },
+    4: { en: 'Unanswered Message (48 h)',  ar: 'رسالة بدون ردّ (48 ساعة)' },
+    5: { en: 'Document Request Ignored',  ar: 'طلب مستند مُهمَل'          },
+    6: { en: 'Hearing Proximity Alert',   ar: 'تنبيه اقتراب الجلسة'       },
+    7: { en: 'Vault Empty Warning',       ar: 'تحذير: الخزنة فارغة'       },
   };
 
   const ruleName = ruleNames[flag.rule_id]?.[isAr ? 'ar' : 'en'] ?? `Rule ${flag.rule_id}`;
@@ -469,4 +545,267 @@ async function insertTimelineEvent(
     // created_at is set by DB default — immutable after insert
   });
   if (error) throw error;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RULE 4 — Chat Non-Response (48 h) → MEDIUM
+//
+// Trigger: client sent a message to a lawyer-assigned case;
+//          no reply from any lawyer on that case within 48 hours.
+// ═══════════════════════════════════════════════════════════════
+async function processRule4(
+  sb:      Supabase,
+  cases:   CaseRow[],
+  now:     Date,
+  results: FlagResult[]
+) {
+  const cutoff48h = new Date(now.getTime() - 48 * 3_600_000).toISOString();
+
+  for (const c of cases) {
+    try {
+      // Only evaluate cases that have an active lawyer assigned
+      const { data: lawyers } = await sb
+        .from('case_lawyers')
+        .select('lawyer_id')
+        .eq('case_id', c.id)
+        .eq('status', 'active')
+        .limit(1);
+
+      if (!lawyers?.length) continue; // no lawyer assigned — skip
+
+      const lawyerIds = lawyers.map((l: { lawyer_id: string }) => l.lawyer_id);
+
+      // Find the most recent client message older than 48 h with no lawyer reply after it
+      const { data: clientMsgs } = await sb
+        .from('chat_messages')
+        .select('id, created_at')
+        .eq('case_id', c.id)
+        .eq('sender_id', c.client_id)
+        .lt('created_at', cutoff48h)         // older than 48 h
+        .is('deleted_at', null)
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (!clientMsgs?.length) continue; // no client messages
+
+      const lastClientMsg = clientMsgs[0];
+
+      // Check if any lawyer replied AFTER the client's last message
+      const { data: lawyerReply } = await sb
+        .from('chat_messages')
+        .select('id')
+        .eq('case_id', c.id)
+        .in('sender_id', lawyerIds)
+        .gt('created_at', lastClientMsg.created_at)
+        .is('deleted_at', null)
+        .limit(1);
+
+      if (lawyerReply?.length) continue; // lawyer replied — no flag needed
+
+      // No reply — create flag if not already open
+      const already = await hasOpenFlag(sb, c.id, 4);
+      if (!already) {
+        await insertFlag(sb, c.id, 4, 'medium', now.toISOString());
+        await insertTimelineEvent(sb, c.id, {
+          rule_id:            4,
+          rule_name:          'Chat Non-Response',
+          severity:           'medium',
+          last_client_msg_at: lastClientMsg.created_at,
+          message:            'No lawyer reply within 48 hours of client message',
+        });
+        results.push({ case_id: c.id, rule_id: 4, severity: 'medium', action: 'flagged' });
+      }
+    } catch (e) {
+      // Per-case error — continue processing remaining cases
+      console.error(`[NDE R4] case ${c.id}:`, e);
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RULE 5 — Document Request Ignored (5 days) → MEDIUM
+//
+// Trigger: a lawyer logged an action_type='document_request';
+//          no document was uploaded to that case in the
+//          following 5 days.
+// ═══════════════════════════════════════════════════════════════
+async function processRule5(
+  sb:      Supabase,
+  cases:   CaseRow[],
+  now:     Date,
+  results: FlagResult[]
+) {
+  const caseIds = cases.map((c) => c.id);
+  if (!caseIds.length) return;
+
+  const cutoff5d = new Date(now.getTime() - 5 * 86_400_000).toISOString();
+
+  // Find all document_request action logs older than 5 days
+  const { data: requests, error } = await sb
+    .from('action_logs')
+    .select('id, case_id, created_at')
+    .in('case_id', caseIds)
+    .eq('action_type', 'document_request')
+    .lt('created_at', cutoff5d);
+
+  if (error) throw error;
+  if (!requests?.length) return;
+
+  for (const req of requests) {
+    try {
+      // Check if any document was uploaded to this case after the request
+      const { data: docs } = await sb
+        .from('documents')
+        .select('id')
+        .eq('case_id', req.case_id)
+        .gt('created_at', req.created_at)
+        .limit(1);
+
+      if (docs?.length) continue; // document was uploaded — no flag
+
+      const already = await hasOpenFlag(sb, req.case_id, 5);
+      if (!already) {
+        await insertFlag(sb, req.case_id, 5, 'medium', now.toISOString());
+        await insertTimelineEvent(sb, req.case_id, {
+          rule_id:     5,
+          rule_name:   'Document Request Ignored',
+          severity:    'medium',
+          request_at:  req.created_at,
+          message:     'Document requested by lawyer 5+ days ago — no upload received',
+        });
+        results.push({ case_id: req.case_id, rule_id: 5, severity: 'medium', action: 'flagged' });
+      }
+    } catch (e) {
+      console.error(`[NDE R5] case ${req.case_id}:`, e);
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RULE 6 — Hearing Proximity Alert (≤3 days, no activity) → HIGH
+//
+// Trigger: a court deadline is due within 3 days AND no lawyer
+//          action_log or document upload in the preceding 48 h.
+// Auto-action: email + WhatsApp push to client.
+// ═══════════════════════════════════════════════════════════════
+async function processRule6(
+  sb:      Supabase,
+  cases:   CaseRow[],
+  now:     Date,
+  results: FlagResult[]
+) {
+  const caseIds   = cases.map((c) => c.id);
+  if (!caseIds.length) return;
+
+  const in3Days   = new Date(now.getTime() + 3 * 86_400_000).toISOString();
+  const ago48h    = new Date(now.getTime() - 48 * 3_600_000).toISOString();
+
+  // Find pending court deadlines due within 3 days
+  const { data: upcoming, error } = await sb
+    .from('deadlines')
+    .select('id, case_id, title, due_date')
+    .in('case_id', caseIds)
+    .eq('type', 'court')
+    .eq('status', 'pending')
+    .gte('due_date', now.toISOString())  // not yet past
+    .lte('due_date', in3Days);
+
+  if (error) throw error;
+  if (!upcoming?.length) return;
+
+  for (const dl of upcoming) {
+    try {
+      // Check for any lawyer action_log in the last 48 h
+      const { data: recentLog } = await sb
+        .from('action_logs')
+        .select('id')
+        .eq('case_id', dl.case_id)
+        .gte('created_at', ago48h)
+        .limit(1);
+
+      // Check for any document upload in the last 48 h
+      const { data: recentDoc } = await sb
+        .from('documents')
+        .select('id')
+        .eq('case_id', dl.case_id)
+        .gte('created_at', ago48h)
+        .limit(1);
+
+      const hasActivity = recentLog?.length || recentDoc?.length;
+      if (hasActivity) continue; // lawyer is active — no flag
+
+      const already = await hasOpenFlag(sb, dl.case_id, 6);
+      if (!already) {
+        await insertFlag(sb, dl.case_id, 6, 'high', now.toISOString());
+        await insertTimelineEvent(sb, dl.case_id, {
+          rule_id:        6,
+          rule_name:      'Hearing Proximity Alert',
+          severity:       'high',
+          deadline_id:    dl.id,
+          deadline_title: dl.title,
+          due_date:       dl.due_date,
+          message:        `Court hearing "${dl.title}" in ≤3 days — no lawyer activity in last 48 h`,
+        });
+        results.push({ case_id: dl.case_id, rule_id: 6, severity: 'high', action: 'flagged' });
+      }
+    } catch (e) {
+      console.error(`[NDE R6] case ${dl.case_id}:`, e);
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RULE 7 — Vault Empty Warning (7+ days old, zero docs) → LOW
+//
+// Trigger: case is 7+ days old and has zero documents uploaded.
+// Auto-action: gentle nudge notification to client only.
+// ═══════════════════════════════════════════════════════════════
+async function processRule7(
+  sb:      Supabase,
+  cases:   CaseRow[],
+  now:     Date,
+  results: FlagResult[]
+) {
+  const cutoff7d = new Date(now.getTime() - 7 * 86_400_000).toISOString();
+
+  // Filter to cases that are 7+ days old
+  const oldCases = cases.filter((c) => c.created_at < cutoff7d);
+  if (!oldCases.length) return;
+
+  const oldCaseIds = oldCases.map((c) => c.id);
+
+  // Find which of those case IDs already have at least one document
+  const { data: casesWithDocs, error } = await sb
+    .from('documents')
+    .select('case_id')
+    .in('case_id', oldCaseIds);
+
+  if (error) throw error;
+
+  const caseIdsWithDocs = new Set(
+    (casesWithDocs ?? []).map((d: { case_id: string }) => d.case_id)
+  );
+
+  for (const c of oldCases) {
+    if (caseIdsWithDocs.has(c.id)) continue; // has documents — skip
+
+    try {
+      const already = await hasOpenFlag(sb, c.id, 7);
+      if (!already) {
+        await insertFlag(sb, c.id, 7, 'low', now.toISOString());
+        await insertTimelineEvent(sb, c.id, {
+          rule_id:  7,
+          rule_name: 'Vault Empty Warning',
+          severity: 'low',
+          days_old: Math.floor(
+            (now.getTime() - new Date(c.created_at).getTime()) / 86_400_000
+          ),
+          message:  'Case is 7+ days old with no documents in the evidence vault',
+        });
+        results.push({ case_id: c.id, rule_id: 7, severity: 'low', action: 'flagged' });
+      }
+    } catch (e) {
+      console.error(`[NDE R7] case ${c.id}:`, e);
+    }
+  }
 }
