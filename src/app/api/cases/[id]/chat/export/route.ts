@@ -102,7 +102,8 @@ export async function GET(request: Request, { params }: Params) {
       hour: '2-digit', minute: '2-digit',
     });
 
-const caseClient = caseRow.users?.[0] as { full_name: string; email: string } | null;  const font = isRTL ? "'IBM Plex Arabic', Arial" : "'Inter', Arial";
+  const caseClient = caseRow.users as unknown as { full_name: string; email: string } | null;
+  const font = isRTL ? "'IBM Plex Arabic', Arial" : "'Inter', Arial";
 
   // ── Build message rows ────────────────────────────────────────
   const messageRows = msgs.map((msg, i) => {

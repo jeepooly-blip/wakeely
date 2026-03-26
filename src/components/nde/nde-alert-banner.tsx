@@ -111,11 +111,15 @@ export function NDEAlertBanner({ flags, caseId, onUpdate }: NDEAlertBannerProps)
     }
   };
 
-  const getRuleName = (ruleId: 1 | 2 | 3): string => ({
+  const getRuleName = (ruleId: 1 | 2 | 3 | 4 | 5 | 6 | 7): string => ({
     1: t('rule1.name'),
     2: t('rule2.name'),
     3: t('rule3.name'),
-  })[ruleId];
+    4: isRTL ? 'رسالة بدون ردّ'      : 'Chat Non-Response',
+    5: isRTL ? 'طلب مستند مُهمَل'    : 'Document Request Ignored',
+    6: isRTL ? 'اقتراب موعد الجلسة' : 'Hearing Proximity Alert',
+    7: isRTL ? 'خزنة الأدلة فارغة'  : 'Vault Empty Warning',
+  }[ruleId] ?? `Rule ${ruleId}`);
 
   const getRuleDesc = (flag: NDEFlag): string => {
     const days = flag.payload?.days_silent ?? 0;
@@ -127,11 +131,15 @@ export function NDEAlertBanner({ flags, caseId, onUpdate }: NDEAlertBannerProps)
     return map[flag.rule_id] ?? '';
   };
 
-  const getRuleAction = (ruleId: 1 | 2 | 3): string => ({
+  const getRuleAction = (ruleId: 1 | 2 | 3 | 4 | 5 | 6 | 7): string => ({
     1: t('rule1.action'),
     2: t('rule2.action'),
     3: t('rule3.action'),
-  })[ruleId];
+    4: isRTL ? 'أرسل تذكيراً للمحامي' : 'Send reminder to lawyer',
+    5: isRTL ? 'أرسل تذكيراً للمحامي' : 'Send reminder to lawyer',
+    6: isRTL ? 'تواصل مع محاميك فوراً' : 'Contact your lawyer immediately',
+    7: isRTL ? 'أضف مستنداتك إلى الخزنة' : 'Upload documents to vault',
+  }[ruleId] ?? '');
 
   const fmtDate = (ds: string) =>
     new Date(ds).toLocaleDateString(isRTL ? 'ar-AE' : 'en-AE', {
