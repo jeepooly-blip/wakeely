@@ -180,6 +180,30 @@ const draftTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
     const files = Array.from(fileList);
     for (const file of files) {
       const tempId = crypto.randomUUID();
+
+      // ── Storage limit pre-check ────────────────────────────────
+      try {
+        const usageRes = await fetch(`/api/vault/storage-usage`);
+        if (usageRes.ok) {
+          const usage = await usageRes.json() as {
+            bytes_used: number; bytes_limit: number; percentage: number;
+          };
+          if (usage.bytes_used + file.size > usage.bytes_limit) {
+            const usedMB  = (usage.bytes_used  / (1024 * 1024)).toFixed(1);
+            const limitGB = (usage.bytes_limit / (1024 * 1024 * 1024)).toFixed(0);
+            setError(
+              locale === 'ar'
+                ? `تجاوزت حد التخزين (${limitGB} جيجابايت). الاستخدام الحالي: ${usedMB} ميغابايت. يرجى ترقية خطتك.`
+                : `Storage limit reached (${limitGB} GB plan). Currently using ${usedMB} MB. Upgrade your plan to upload more files.`
+            );
+            continue; // skip this file, check the next
+          }
+        }
+      } catch {
+        // Non-blocking: if the check fails, allow the upload to proceed
+        // (the Supabase Storage RLS will be the final enforcement)
+      }
+
       const placeholder: UploadedFile = {
         id: tempId, name: file.name, size: file.size,
         hash: '', path: '', status: 'uploading',

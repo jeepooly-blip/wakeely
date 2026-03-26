@@ -12,13 +12,14 @@ interface ActionLogFormProps {
 }
 
 const ACTION_TYPES: { value: ActionType; en: string; ar: string }[] = [
-  { value: 'court_hearing',     en: 'Court Hearing',      ar: 'جلسة استماع' },
-  { value: 'document_filed',    en: 'Document Filed',     ar: 'إيداع مستند' },
-  { value: 'client_contacted',  en: 'Client Contacted',   ar: 'تواصل مع الموكّل' },
-  { value: 'research',          en: 'Research',           ar: 'بحث قانوني' },
-  { value: 'negotiation',       en: 'Negotiation',        ar: 'مفاوضات' },
-  { value: 'correspondence',    en: 'Correspondence',     ar: 'مراسلة' },
-  { value: 'other',             en: 'Other',              ar: 'أخرى' },
+  { value: 'court_hearing',     en: 'Court Hearing',        ar: 'جلسة استماع'        },
+  { value: 'document_filed',    en: 'Document Filed',       ar: 'إيداع مستند'        },
+  { value: 'client_contacted',  en: 'Client Contacted',     ar: 'تواصل مع الموكّل'   },
+  { value: 'document_request',  en: 'Document Request',     ar: 'طلب مستند من الموكّل' }, // NDE Rule 5
+  { value: 'research',          en: 'Research',             ar: 'بحث قانوني'         },
+  { value: 'negotiation',       en: 'Negotiation',          ar: 'مفاوضات'            },
+  { value: 'correspondence',    en: 'Correspondence',       ar: 'مراسلة'             },
+  { value: 'other',             en: 'Other',                ar: 'أخرى'               },
 ];
 
 export function ActionLogForm({ caseId, locale, onSaved }: ActionLogFormProps) {

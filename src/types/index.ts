@@ -20,7 +20,6 @@ export interface WakeelaUser {
   timezone: string;
   data_region: DataRegion;
   subscription_tier: SubscriptionTier;
-  hijri_calendar: boolean;   // PRD §7.1 — show Hijri dates alongside Gregorian
   avatar_url?: string;
   created_at: string;
 }

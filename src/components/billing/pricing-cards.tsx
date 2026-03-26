@@ -26,8 +26,9 @@ const TIER_COLORS: Record<SubscriptionTier, { border: string; badge: string; btn
 };
 
 const FEATURE_LABELS: Record<string, { en: string; ar: string }> = {
-  max_cases:     { en: '{n} case{p}',                            ar: '{n} قضية' },
+  max_cases:     { en: '{n} active case{p}',                     ar: '{n} قضية نشطة' },
   max_docs:      { en: '{n} documents per case',                 ar: '{n} مستند لكل قضية' },
+  storage_gb:    { en: '{n} GB vault storage',                   ar: '{n} جيجابايت تخزين' },
   lawyer_invite: { en: 'Lawyer invite & collaboration',          ar: 'دعوة المحامي والتعاون' },
   chat:          { en: 'Secure client-lawyer chat',              ar: 'محادثة آمنة مع المحامي' },
   escalation:    { en: 'Escalation toolkit (letter templates)',  ar: 'أدوات التصعيد (قوالب الرسائل)' },

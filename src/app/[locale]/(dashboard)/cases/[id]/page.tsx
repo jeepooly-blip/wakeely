@@ -4,11 +4,10 @@ import { createClient } from '@/lib/supabase/server';
 import { Link } from '@/i18n/navigation';
 import { NDEAlertBanner, type NDEFlag } from '@/components/nde/nde-alert-banner';
 import { LawyerAccessPanel } from '@/components/lawyer/lawyer-access-panel';
-import { InviteButton }       from '@/components/cases/invite-button';
-import { LawyerScorePanel }   from '@/components/scores/lawyer-score-panel';
-import { CaseHealthCard }     from '@/components/scores/case-health-card';
-import { HealthBadge }        from '@/components/scores/health-badge';
-import { AISummaryPanel }     from '@/components/cases/ai-summary-panel';
+import { InviteButton } from '@/components/cases/invite-button';
+import { LawyerScorePanel } from '@/components/scores/lawyer-score-panel';
+import { CaseHealthCard } from '@/components/scores/case-health-card';
+import { HealthBadge } from '@/components/scores/health-badge';
 import { cn } from '@/lib/utils';
 import {
   ArrowLeft, ArrowRight, Scale, Calendar, FileText,
@@ -31,14 +30,6 @@ export default async function CaseDetailPage({
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect(`/${locale}/login`);
-
-  // Fetch subscription tier + cached AI summary in parallel
-  const [{ data: profileRow }, { data: cachedSummary }] = await Promise.all([
-    supabase.from('users').select('subscription_tier').eq('id', user.id).maybeSingle(),
-    supabase.from('case_summaries').select('id, case_id, generated_at, language, summary_json')
-      .eq('case_id', id).maybeSingle(),
-  ]);
-  const subscriptionTier = profileRow?.subscription_tier ?? 'basic';
 
   const { data: c } = await supabase
     .from('cases')
@@ -432,14 +423,6 @@ export default async function CaseDetailPage({
           </Link>
         </div>
       </div>
-
-      {/* AI Case Summary — Premium feature */}
-      <AISummaryPanel
-        caseId={id}
-        locale={locale}
-        subscriptionTier={subscriptionTier}
-        cachedSummary={cachedSummary ?? null}
-      />
 
       {/* Legal disclaimer */}
       <p className="text-[10px] text-muted-foreground/50 text-center leading-relaxed max-w-lg mx-auto">

@@ -408,28 +408,30 @@ async function sendFlagNotification(sb: Supabase, flag: FlagResult, now: Date) {
     }).catch(() => {});
   }
 
-  // ── WhatsApp + SMS fallback — Rule 6 only (hearing proximity = urgent push) ──
+  // ── WhatsApp — Rule 6 only (hearing proximity = urgent push) ──
   const waToken   = process.env.WHATSAPP_ACCESS_TOKEN;
   const waPhoneId = process.env.WHATSAPP_PHONE_NUMBER_ID;
 
   if (
     flag.rule_id === 6 &&
-    user.phone
+    user.notification_whatsapp !== false &&
+    user.phone &&
+    waToken &&
+    waPhoneId
   ) {
     const waBody = isAr
       ? `⚠️ وكيلا: جلستك القضائية في "${caseRow.title}" خلال 3 أيام أو أقل. لم يُسجَّل أي نشاط من محاميك في الـ 48 ساعة الماضية. سجّل دخولك لاتخاذ إجراء.`
       : `⚠️ Wakeela: Your court hearing for "${caseRow.title}" is in 3 days or less. No lawyer activity has been recorded in the past 48 hours. Log in to take action.`;
 
-    const smsBody = isAr
-      ? `وكيلا: جلستك في "${caseRow.title.slice(0, 30)}" خلال 3 أيام. لا يوجد نشاط من محاميك. سجّل دخولك الآن.`
-      : `Wakeela: Court hearing for "${caseRow.title.slice(0, 30)}" in 3 days. No lawyer activity recorded. Log in now.`;
-
-    const { sendWhatsAppWithSMSFallback } = await import('@/lib/notify');
-    await sendWhatsAppWithSMSFallback({
-      phone:                user.phone,
-      message:              waBody,
-      smsMessage:           smsBody,
-      notification_whatsapp: user.notification_whatsapp !== false,
+    await fetch(`https://graph.facebook.com/v19.0/${waPhoneId}/messages`, {
+      method:  'POST',
+      headers: { Authorization: `Bearer ${waToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        to:   user.phone.replace(/\D/g, ''),
+        type: 'text',
+        text: { body: waBody },
+      }),
     }).catch(() => {});
   }
 }
