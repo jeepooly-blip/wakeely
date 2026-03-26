@@ -44,9 +44,9 @@ export function InvoicePortalView({
   const services      = (invoice.items ?? []).filter((i) => i.item_type === 'professional_service');
   const disbursements = (invoice.items ?? []).filter((i) => i.item_type === 'disbursement');
 
-  const lawyer = invoice.lawyer as { full_name: string; email: string; phone?: string } | undefined;
-  const client = invoice.client as { full_name: string; email: string; phone?: string } | undefined;
-  const caseRow = invoice.case   as { title: string; case_type: string; jurisdiction?: string } | undefined;
+  const lawyer  = invoice.lawyer as unknown as { full_name: string; email: string; phone?: string } | undefined;
+  const client  = invoice.client as unknown as { full_name: string; email: string; phone?: string } | undefined;
+  const caseRow = invoice.case   as unknown as { title: string; case_type: string; jurisdiction?: string } | undefined;
 
   const handlePay = async () => {
     if (!payRef.trim() && payMethod === 'bank_transfer') {

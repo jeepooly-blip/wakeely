@@ -93,8 +93,8 @@ export default async function ClientInvoicesPage() {
           <div className="divide-y divide-border">
             {all.map((inv) => {
               const sc       = statusConfig[inv.status as InvoiceStatus] ?? statusConfig.sent;
-              const caseRow  = inv.cases  as { id: string; title: string } | null;
-              const lawyer   = inv.lawyer as { full_name: string } | null;
+              const caseRow  = inv.cases  as unknown as { id: string; title: string } | null;
+              const lawyer   = inv.lawyer as unknown as { full_name: string } | null;
               const isOverdue = inv.status !== 'paid' && inv.status !== 'cancelled'
                 && new Date(inv.due_date) < new Date();
 

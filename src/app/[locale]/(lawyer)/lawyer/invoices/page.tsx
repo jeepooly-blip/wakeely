@@ -152,8 +152,8 @@ export default async function LawyerInvoicesPage() {
             {all.map((inv) => {
               const sc     = statusConfig[inv.status as InvoiceStatus] ?? statusConfig.draft;
               const Icon   = sc.icon;
-              const caseRow = inv.cases as { id: string; title: string } | null;
-              const client  = inv.client as { full_name: string } | null;
+              const caseRow = inv.cases as unknown as { id: string; title: string } | null;
+              const client  = inv.client as unknown as { full_name: string } | null;
               const isOverdue = inv.status !== 'paid' && inv.status !== 'cancelled'
                 && new Date(inv.due_date) < new Date();
 
